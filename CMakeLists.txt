@@ -38,6 +38,7 @@ find_package(Threads REQUIRED)
 CPMAddPackage("gh:nlohmann/json@3.10.5")
 CPMAddPackage("gh:gabime/spdlog@1.8.2")
 CPMAddPackage("gh:chriskohlhoff/asio#asio-1-18-1@1.18.1")
+CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
 
 if(asio_ADDED)
   add_library(asio INTERFACE)
@@ -79,7 +80,7 @@ if(asio_ADDED)
   endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog libzstd_shared  nlohmann_json::nlohmann_json asio )
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog libzstd_shared  nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
