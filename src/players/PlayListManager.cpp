@@ -11,7 +11,7 @@
 
 PlayListManager::PlayListManager():
 	m_scheduleTimer(std::make_unique<QTimer>(this)),
-		m_logger(spdlog::get("scottplayer"))
+		m_logger(spdlog::get("miniplayer"))
 {
 	m_scheduleTimer->setInterval(2000);
 	m_scheduleTimer->moveToThread(&m_scheduleThread);
@@ -31,23 +31,23 @@ PlayListManager::~PlayListManager()
 	m_scheduleThread.wait();
 }
 
-bool PlayListManager::LoadPlayLists(QString const& configFolder)
+bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 {
-	QString const filepath = configFolder + QDir::separator() + "scottplayer.json";
+	std::string const filepath = configFolder + QDir::separator() + "scottplayer.json";
 	if(!QFile::exists(configFolder))
 	{
-		m_logger->warn("config file not found: {}", configFolder.toStdString());
+		m_logger->warn("config file not found: {}", configFolder);
 		return false;
 	}
 	LoadJsonFile(filepath);
 	return true;
 }
 
-void PlayListManager::SavePlayLists(QString const& configFolder)
+void PlayListManager::SavePlayLists(std::string const& configFolder)
 {
-	QString const filepath = configFolder + QDir::separator() + "scottplayer.json";
+	std::string const filepath = configFolder + QDir::separator() + "scottplayer.json";
 	SaveJsonFile(filepath);
-	MessageSend("Saved: scottplayer.json" );
+	//MessageSend("Saved: scottplayer.json" );
 }
 
 void PlayListManager::PlaySequence(int playlist_index, int sequence_index) const
@@ -131,23 +131,22 @@ void PlayListManager::DeletePlayList(int playlist_index)
 	//redraw
 }
 
-void PlayListManager::UpdateStatus(QString const& sequencePath, PlaybackStatus status)
+void PlayListManager::UpdateStatus(std::string const& sequencePath, PlaybackStatus status)
 {
 	m_status = status;
 }
 
-void PlayListManager::AddPlaylistName(QString const& playlist)
+void PlayListManager::AddPlaylistName(std::string const& playlist)
 {
 	if (std::any_of(m_playlists.begin(), m_playlists.end(), [&](auto const& elem)
 		{ return elem.Name == playlist; })) {
-		m_logger->warn("Cannot have Duplicate PlayList Names: {}", playlist.toStdString());
+		m_logger->warn("Cannot have Duplicate PlayList Names: {}", playlist);
 		return;
 	}
 	m_playlists.emplace_back(playlist);
-	emit AddPlaylistSend(m_playlists.back().Name, m_playlists.size() - 1 );
 }
 
-void PlayListManager::AddSequence(QString const& fseqPath, QString const& mediaPath, int index)
+void PlayListManager::AddSequence(std::string const& fseqPath, std::string const& mediaPath, int index)
 {
 	if (index < 0 || index >= m_playlists.size())
 	{
@@ -160,7 +159,7 @@ void PlayListManager::AddSequence(QString const& fseqPath, QString const& mediaP
 void PlayListManager::AddSchedule(Schedule schedule)
 {
 	m_schedules.emplace_back(std::move(schedule));
-	emit DisplayScheduleSend();
+	//emit DisplayScheduleSend();
 }
 
 void PlayListManager::DeleteSchedule(int schedule_index) 
@@ -171,7 +170,7 @@ void PlayListManager::DeleteSchedule(int schedule_index)
 	}
 
 	m_schedules.erase(m_schedules.begin() + schedule_index);
-	emit DisplayScheduleSend();
+	//emit DisplayScheduleSend();
 }
 
 void PlayListManager::EditSchedule(int schedule_index, Schedule schedule)
@@ -181,7 +180,7 @@ void PlayListManager::EditSchedule(int schedule_index, Schedule schedule)
 		return;
 	}
 	m_schedules[schedule_index] = std::move(schedule);
-	emit DisplayScheduleSend();
+	//emit DisplayScheduleSend();
 }
 
 void PlayListManager::MoveScheduleUp(int schedule_index)
@@ -192,7 +191,7 @@ void PlayListManager::MoveScheduleUp(int schedule_index)
 	}
 	std::swap(m_schedules.at(schedule_index),
 		m_schedules.at(schedule_index + 1));
-	emit DisplayScheduleSend();
+	//emit DisplayScheduleSend();
 }
 
 void PlayListManager::MoveScheduleDown(int schedule_index) 
@@ -204,11 +203,11 @@ void PlayListManager::MoveScheduleDown(int schedule_index)
 
 	std::swap(m_schedules.at(schedule_index),
 		m_schedules.at(schedule_index - 1));
-	emit DisplayScheduleSend();
+	//emit DisplayScheduleSend();
 	
 }
 
-void PlayListManager::LoadJsonFile(const QString& jsonFile)
+void PlayListManager::LoadJsonFile(const std::string& jsonFile)
 {
 	QFile loadFile(jsonFile);
 	if (!loadFile.open(QIODevice::ReadOnly))
@@ -224,7 +223,7 @@ void PlayListManager::LoadJsonFile(const QString& jsonFile)
 	ReadSchedules(loadDoc.object());
 }
 
-void PlayListManager::SaveJsonFile(const QString& jsonFile)
+void PlayListManager::SaveJsonFile(const std::string& jsonFile)
 {
 	QFile saveFile(jsonFile);
 	if (!saveFile.open(QIODevice::WriteOnly))
@@ -295,7 +294,7 @@ void PlayListManager::WriteSchedules(QJsonObject& json) const
 	return m_playlists.at(index);
 }
 
-[[nodiscard]] std::optional< std::reference_wrapper< PlayList const > > PlayListManager::GetPlayList(QString const& name) const
+[[nodiscard]] std::optional< std::reference_wrapper< PlayList const > > PlayListManager::GetPlayList(std::string const& name) const
 {
 	if (auto const found{ std::find_if(m_playlists.cbegin(),m_playlists.cend(),
 											[&name](auto& c) { return c.Name.compare(name, Qt::CaseInsensitive) == 0; }) };
@@ -306,9 +305,9 @@ void PlayListManager::WriteSchedules(QJsonObject& json) const
 	return std::nullopt;
 }
 
-QStringList PlayListManager::GetPlayLists() const 
+std::vector<std::string> PlayListManager::GetPlayLists() const 
 {
-	QStringList playLists;
+	std::vector<std::string> playLists;
 	std::transform(m_playlists.cbegin(), m_playlists.cend(), std::back_inserter(playLists),
 		[](auto const& pl) { return pl.Name; });
 
@@ -363,7 +362,7 @@ void PlayListManager::PlayNextSequence()
 	}
 }
 
-void PlayListManager::PlayNewPlaylist(QString const& playlistName)
+void PlayListManager::PlayNewPlaylist(std::string const& playlistName)
 {
 	if (auto const& playlistRef = GetPlayList(playlistName); playlistRef)
 	{

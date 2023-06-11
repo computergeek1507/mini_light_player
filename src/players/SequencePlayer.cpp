@@ -47,12 +47,12 @@ SequencePlayer::~SequencePlayer()
 	delete m_lastFrameData;
 }
 
-void SequencePlayer::LoadConfigs(QString const& configPath)
+void SequencePlayer::LoadConfigs(std::string const& configPath)
 {
 	LoadOutputs(configPath + QDir::separator() + "xlights_networks.xml");
 }
 
-void SequencePlayer::LoadSequence(QString const& sequencePath, QString const& mediaPath)
+void SequencePlayer::LoadSequence(std::string const& sequencePath, std::string const& mediaPath)
 {
 	emit UpdatePlaybackStatus(sequencePath, PlaybackStatus::Loading);
 	bool loaded = LoadSeqFile(sequencePath);
@@ -175,14 +175,12 @@ void SequencePlayer::TriggerTimedOutputData(qint64 timeMS)
 	//m_lastFrameData = m_seqFile->getFrame(m_lastFrameRead);
 }
 
-void SequencePlayer::LoadOutputs(QString const& configPath)
+void SequencePlayer::LoadOutputs(std::string const& configPath)
 {
 	m_outputManager = std::make_unique<OutputManager>();
-	connect(m_outputManager.get(), &OutputManager::AddController, this, &SequencePlayer::on_AddController);
-	connect(m_outputManager.get(), &OutputManager::SetChannelCount, this, &SequencePlayer::setTotalChannels);
 	if(m_outputManager->LoadOutputs(configPath))
 	{
-		emit UpdateStatus("Loaded: " + configPath);
+		//emit UpdateStatus("Loaded: " + configPath);
 	}
 }
 
@@ -191,18 +189,18 @@ void SequencePlayer::SendSync(qint64 frameIdx)
 	m_syncManager->SendSync(m_seqStepTime, frameIdx, m_seqFileName, m_mediaName);
 }
 
-bool SequencePlayer::LoadSeqFile(QString const& sequencePath)
+bool SequencePlayer::LoadSeqFile(std::string const& sequencePath)
 {
 	m_seqFile = nullptr;
-	FSEQFile* seqFile = FSEQFile::openFSEQFile(sequencePath.toStdString());
+	FSEQFile* seqFile = FSEQFile::openFSEQFile(sequencePath);
 	if (seqFile == nullptr)
 	{
-		emit UpdatePlaybackStatus("", PlaybackStatus::Stopped);
+		//emit UpdatePlaybackStatus("", PlaybackStatus::Stopped);
 		return false;
 	}
 	m_seqStepTime = seqFile->getStepTime();
 
-	m_mediaFile = QString::fromStdString(seqFile->getMediaFilename());
+	m_mediaFile = seqFile->getMediaFilename();
 
 	m_seqFile = seqFile;
 

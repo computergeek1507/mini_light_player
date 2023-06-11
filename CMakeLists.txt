@@ -81,7 +81,7 @@ if(asio_ADDED)
   endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog libzstd_shared  nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog libzstd_shared nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2 MinimalSocket)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

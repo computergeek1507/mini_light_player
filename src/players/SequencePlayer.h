@@ -8,14 +8,6 @@
 
 #include "spdlog/spdlog.h"
 
-#include <QMap>
-#include <QObject>
-#include <QString>
-#include <QTimer>
-#include <QThread>
-
-#include <QMediaPlayer>
-
 #include <memory>
 #include <chrono>
 
@@ -35,54 +27,45 @@ enum class PlaybackStatus
     Stopped
 };
 
-class SequencePlayer : public QObject
+class SequencePlayer
 {
-    Q_OBJECT
+
 public:
     SequencePlayer();
     ~SequencePlayer();
 
-    void LoadConfigs(QString const& configPath);
+    void LoadConfigs(std::string const& configPath);
 
-public Q_SLOTS:
-    void LoadSequence(QString const& sequencePath, QString const& mediaPath = QString());
+
+    void LoadSequence(std::string const& sequencePath, std::string const& mediaPath = std::string());
 
     void StopSequence();
-    void LoadOutputs(QString const& configPath);
-    void SendSync(qint64 frameIdx);
-    void on_AddController(bool enabled, QString const& type, QString const& ip, QString const& channels)
-    {
-        emit AddController(enabled, type, ip, channels);
-    }
-    void setTotalChannels(uint64_t channels)
-    {
-        channelsCount = channels;
-    }
-    void MediaStatusChanged(QMediaPlayer::MediaStatus status);
-    void MediaStateChanged(QMediaPlayer::State state);
+    void LoadOutputs(std::string const& configPath);
+    void SendSync(uint64_t frameIdx);
+
+
     void TriggerOutputData();
-    void TriggerTimedOutputData(qint64 timeMS);
+    void TriggerTimedOutputData(uint64_t timeMS);
 
     void SetMultisync(bool enabled);  
 
-Q_SIGNALS:
-    void UpdateSequence(QString const& sequenceName, QString const& media, int frames, int frameSizeMS);
-    void AddController(bool enabled, QString const& type, QString const& ip, QString const& channels);
-    void UpdateStatus(QString const& message);
-    void UpdateTime(QString const& sequenceName, int elapsedMS, int durationMS);
+    void UpdateSequence(std::string const& sequenceName, std::string const& media, int frames, int frameSizeMS);
+    void AddController(bool enabled, std::string const& type, std::string const& ip, std::string const& channels);
+    void UpdateStatus(std::string const& message);
+    void UpdateTime(std::string const& sequenceName, int elapsedMS, int durationMS);
 
-    void UpdatePlaybackStatus(QString const& sequencePath, PlaybackStatus status);
+    void UpdatePlaybackStatus(std::string const& sequencePath, PlaybackStatus status);
 
 private:
     void PlaySequence();
-    bool LoadSeqFile(QString const& sequencePath);
+    bool LoadSeqFile(std::string const& sequencePath);
     void StartAnimationSeq();
 
     void StartMusicSeq();
 
-    QString m_seqFileName;
-    QString m_mediaFile;
-    QString m_mediaName;
+    std::string m_seqFileName;
+    std::string m_mediaFile;
+    std::string m_mediaName;
     FSEQFile* m_seqFile{nullptr};
     //std::chrono::time_point<std::chrono::high_resolution_clock> m_seqMSElapsed;
     int m_seqMSDuration{0};

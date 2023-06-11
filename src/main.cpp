@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "miniplayer.h"
 
 int main(int argc, char *argv[])
 {

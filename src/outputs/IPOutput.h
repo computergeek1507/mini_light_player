@@ -3,13 +3,14 @@
 
 #include "BaseOutput.h"
 
+#include <MinimalSocket/udp/UdpSocket.h>
 
 #include <memory>
 
 struct IPOutput : BaseOutput
 {
-	IPOutput(asio::io_context io):m_UdpSocket(std::make_unique<udp::socket>(io)) {}
-	std::unique_ptr<asio::ip::udp::socket> m_UdpSocket;
+	IPOutput() {}
+	std::unique_ptr<MinimalSocket::udp::UdpBinded> m_UdpSocket;
 };
 
 #endif

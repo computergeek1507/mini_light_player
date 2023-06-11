@@ -1,7 +1,8 @@
 #include "E131Output.h"
 
-#include <QString>
+#include <string>
 #include <memory>
+    #include <algorithm>
 
 E131Output::E131Output()
 {
@@ -11,12 +12,12 @@ E131Output::E131Output()
 std::string GetTag()
 {
     // creates a unique tag per running instance of xLights on this machine
-    return "xLights " + QString::number(QCoreApplication::applicationPid()).toStdString();
+    return "miniplayer";
 }
 
 bool E131Output::Open()
 {
-	if (IP.isEmpty() || !Enabled) return false;
+	if (IP.empty() || !Enabled) return false;
 
     memset(_data, 0x00, sizeof(_data));
     _sequenceNum = 0;
@@ -39,13 +40,17 @@ bool E131Output::Open()
 
     // CID/UUID
 
-    QString id = XLIGHTS_UUID;
-    id.replace("-", "");
-    id = id.toLower();
+    std::string id = XLIGHTS_UUID;
+
+    id.erase(std::remove(id.begin(), id.end(), '-'), id.end());
+    //id.replace("-", "");
+    std::transform(id.begin(), id.end(), id.begin(),
+    [](unsigned char c){ return std::tolower(c); });
+    //id = id.toLower();
     if (id.length() != 32) throw "invalid CID";
     for (int i = 0, j = 22; i < 32; i += 2) {
-        wchar_t msb = id[i].toLatin1();
-        wchar_t lsb = id[i + 1].toLatin1();
+        wchar_t msb = id[i];
+        wchar_t lsb = id[i + 1];
         msb -= isdigit(msb) ? 0x30 : 0x57;
         lsb -= isdigit(lsb) ? 0x30 : 0x57;
         _data[j++] = (uint8_t)((msb << 4) | lsb);
@@ -67,16 +72,17 @@ bool E131Output::Open()
     _data[123] = 0x02;  // Property value count (high)
     _data[124] = 0x01;  // Property value count (low)
 
-    m_UdpSocket = std::make_unique<QUdpSocket>(this);
+    //m_UdpSocket = std::make_unique<QUdpSocket>(this);
+    const MinimalSocket::Address remote_address(IP, E131_PORT);
 
-
-    if (IP.startsWith("239.255.") || IP == "MULTICAST") {
+    if (IP.starts_with("239.255.") || IP == "MULTICAST") {
         // multicast - universe number must be in lower 2 bytes
-        QString ipaddrWithUniv = QString("239.255.%1.%2").arg((int)UnivHi).arg((int)UnivLo);
-        m_UdpSocket->joinMulticastGroup(QHostAddress(ipaddrWithUniv));
+       // QString ipaddrWithUniv = QString("239.255.%1.%2").arg((int)UnivHi).arg((int)UnivLo);
+       // m_UdpSocket->joinMulticastGroup(QHostAddress(ipaddrWithUniv));
     }
     else {
-        m_UdpSocket->connectToHost(IP, E131_PORT);
+        m_UdpSocket = std::make_unique<MinimalSocket::udp::UdpBinded>(E131_PORT, remote_address.getFamily());
+        m_UdpSocket->connect(remote_address);
     }
 
     uint8_t NumHi = (PacketSize + 1) >> 8;   // Channels (high)
@@ -109,7 +115,7 @@ bool E131Output::Open()
 
 void E131Output::OutputFrame(uint8_t* data)
 {
-    if (!Enabled || m_UdpSocket == nullptr || m_UdpSocket->state() != QAbstractSocket::ConnectedState) return;
+    if (!Enabled || m_UdpSocket == nullptr ) return;
     //size_t chs = (std::min)(size, (size_t)(GetMaxChannels() - channel));
 
     size_t chs = PacketSize;
@@ -119,10 +125,10 @@ void E131Output::OutputFrame(uint8_t* data)
     else {
         memcpy(&_data[E131_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
     }
-    m_UdpSocket->write((char*)&_data, E131_PACKET_LEN);
+    m_UdpSocket->sendTo((char*)&_data, E131_PACKET_LEN);
 }
 
 void E131Output::Close()
 {
-    m_UdpSocket->close();
+    //m_UdpSocket->();
 }

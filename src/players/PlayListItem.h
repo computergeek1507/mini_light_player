@@ -1,17 +1,17 @@
 #ifndef PLAYLISTITEM_H
 #define PLAYLISTITEM_H
 
-#include <QString>
+#include <string>
 #include <QJsonObject>
 
 struct PlayListItem
 {
-	QString SequenceFile;
-	QString MediaFile;
+	std::string SequenceFile;
+	std::string MediaFile;
 
 	PlayListItem() = default;
 
-	PlayListItem(QString const& seq, QString const& media):
+	PlayListItem(std::string const& seq, std::string const& media):
 		SequenceFile(seq), MediaFile(media)
 	{
 	}

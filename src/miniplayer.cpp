@@ -34,14 +34,10 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 
 
 	m_player = std::make_unique<SequencePlayer>();
-
-	m_playlists = std::make_unique<PlayListManager>();
-	
-
-	
-		m_player->LoadConfigs(m_showfolder);
-		m_playlists->LoadPlayLists(m_showfolder);
-		//m_showfolder = lastfolder;
+	m_playlists = std::make_unique<PlayListManager>();	
+	m_player->LoadConfigs(m_showfolder);
+	m_playlists->LoadPlayLists(m_showfolder);
+	//m_showfolder = lastfolder;
 
 
 }

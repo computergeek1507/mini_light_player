@@ -3,28 +3,25 @@
 
 #include "spdlog/spdlog.h"
 
-#include <QtNetwork>
-#include <QUdpSocket>
-#include <QString>
-#include <QObject>
+
+#include <string>
 
 #include <memory>
 #include <vector>
 
-class SyncManager : public QObject
-{
-	Q_OBJECT
+class SyncManager {
+
 
 public:
 
-	SyncManager(QObject* parent = 0);
+	SyncManager();
 	~SyncManager();
 
 	bool OpenOutputs();
 	void CloseOutputs();
 
 	void SendStop();
-	void SendSync(uint32_t frameSizeMS, uint32_t frame, QString const& fseq, QString const& media);
+	void SendSync(uint32_t frameSizeMS, uint32_t frame, std::string const& fseq, std::string const& media);
 
 	bool IsEnabled() const { return m_enabled; }
 	void SetEnabled(bool enable)
@@ -32,19 +29,17 @@ public:
 		m_enabled = enable;
 	}
 
-Q_SIGNALS:
-
 private:
-	void SendFPPSync(const QString& item, uint32_t stepMS, uint32_t frames);
+	void SendFPPSync(const std::string& item, uint32_t stepMS, uint32_t frames);
 
 	bool m_enabled{ true };
-	QString m_lastFseq;
-	QString m_lastMedia;
+	std::string m_lastFseq;
+	std::string m_lastMedia;
 	size_t m_lastFrame{ 0 };
 	size_t m_lastMediaMsec{ 0 };
 	//QStringList m_unicast;
-	QHostAddress m_groupAddress;
-	std::unique_ptr<QUdpSocket> m_UdpSocket{ nullptr };
+	//QHostAddress m_groupAddress;
+	//std::unique_ptr<QUdpSocket> m_UdpSocket{ nullptr };
 	std::shared_ptr<spdlog::logger> m_logger{ nullptr };
 };
 

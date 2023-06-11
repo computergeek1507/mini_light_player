@@ -9,7 +9,7 @@ ArtNetOutput::ArtNetOutput()
 
 bool ArtNetOutput::Open()
 {
-	if (IP.isEmpty() || !Enabled) return false;
+	if (IP.empty() || !Enabled) return false;
 
     memset(_data, 0x00, sizeof(_data));
     _sequenceNum = 0;
@@ -27,17 +27,18 @@ bool ArtNetOutput::Open()
     _data[15] = ((Universe & 0xFF00) >> 8);
     _data[16] = 0x02; // we are going to send all 512 bytes
 
-    m_UdpSocket = std::make_unique<QUdpSocket>(this);
-
+    //m_UdpSocket = std::make_unique<QUdpSocket>(this);
+    const MinimalSocket::Address remote_address(IP, ARTNET_PORT);
 
     if (IP == "MULTICAST") {
         //todo: maybe right?
-        m_UdpSocket->joinMulticastGroup(QHostAddress("255.255.255.255"));
+        //m_UdpSocket->joinMulticastGroup(QHostAddress("255.255.255.255"));
     }
     else {
-        m_UdpSocket->connectToHost(IP, ARTNET_PORT);
+        m_UdpSocket = std::make_unique<MinimalSocket::udp::UdpBinded>(ARTNET_PORT, remote_address.getFamily());
+        m_UdpSocket->connect(remote_address);
     }
-
+    
     _data[16] = (uint8_t)(PacketSize >> 8);  // Property value count (high)
     _data[17] = (uint8_t)(PacketSize & 0xff);  // Property value count (low)
 
@@ -46,7 +47,7 @@ bool ArtNetOutput::Open()
 
 void ArtNetOutput::OutputFrame(uint8_t* data)
 {
-    if (!Enabled || m_UdpSocket == nullptr || m_UdpSocket->state() != QAbstractSocket::ConnectedState) return;
+    if (!Enabled || m_UdpSocket == nullptr ) return;
     //size_t chs = (std::min)(size, (size_t)(GetMaxChannels() - channel));
 
     size_t chs = PacketSize;
@@ -56,10 +57,10 @@ void ArtNetOutput::OutputFrame(uint8_t* data)
     else {
         memcpy(&_data[ARTNET_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
     }
-    m_UdpSocket->write((char*)&_data, ARTNET_PACKET_LEN);
+    m_UdpSocket->sendTo((char*)&_data, ARTNET_PACKET_LEN);
 }
 
 void ArtNetOutput::Close()
 {
-    m_UdpSocket->close();
+    //m_UdpSocket->close();
 }
