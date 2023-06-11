@@ -53,70 +53,89 @@ bool OutputManager::LoadOutputs(std::string const& outputConfig)
 	}
 	// Get root Element
 	XMLElement * rootXML = xmlNetworks.RootElement();
+
+	if (!rootXML)
+	{
+		m_logger->warn("Failed to read XML");
+		return false;
+	}
 	
 	uint64_t startChannel{ 1 };
-	//std::string const Type = rootXML.tagName();
-	//std::string const proxy = rootXML.attribute("GlobalFPPProxy", "");
+	XMLElement * controllerXML = rootXML->FirstChildElement("Controller"); 
+
+	while(controllerXML)
+	{
+		bool const active = controllerXML->Attribute("ActiveState", "Active") == "Active";
+		XMLElement * networkXML = controllerXML->FirstChildElement("network");
+		std::string const name = controllerXML->Attribute("Name");
+
+		while(networkXML)
+		{			
+			std::string const nType = networkXML->Attribute("NetworkType");
+			 
+			std::string sChannels = networkXML->Attribute("MaxChannels");
+			if(sChannels.empty()) sChannels = "0";
+			std::string const ipAddress = networkXML->Attribute("ComPort");
+			std::string const universe = networkXML->Attribute("BaudRate");
+			uint64_t iChannels = std::stoull(sChannels);
+
+			m_logger->debug("Adding Output '{}' type: {}", name, nType);
+
+			if ("DDP" == nType)
+			{
+				std::string sKeepChannels = networkXML->Attribute("KeepChannelNumbers", "1");
+				if(sKeepChannels.empty()) sKeepChannels = "1";
+				std::string sPacketSize = networkXML->Attribute("ChannelsPerPacket");
+				if(sPacketSize.empty()) sPacketSize = "1440";
 	
-	//for (QDomElement controllerXML = rootXML.firstChildElement("Controller"); !controllerXML.isNull(); controllerXML = controllerXML.nextSiblingElement("Controller"))
-	//{
-	//	bool const active = controllerXML.attribute("ActiveState", "Active") == "Active";
-	//	for (QDomElement networkXML = controllerXML.firstChildElement("network"); !networkXML.isNull(); networkXML = networkXML.nextSiblingElement("network"))
-	//	{
-	//		QString const nType = networkXML.attribute("NetworkType", "");
-	//		QString const sChannels = networkXML.attribute("MaxChannels", "0");
-	//		QString const ipAddress = networkXML.attribute("ComPort", "");
-	//		QString const universe = networkXML.attribute("BaudRate", "");
-	//		uint64_t iChannels =  sChannels.toULong();
-	//		if ("DDP" == nType)
-	//		{
-	//			QString const sKeepChannels = networkXML.attribute("KeepChannelNumbers", "1");
-	//			QString const sPacketSize = networkXML.attribute("ChannelsPerPacket", "1440");
-	//
-	//			auto ddp = std::make_unique<DDPOutput>();
-	//			ddp->IP = ipAddress;
-	//			ddp->PacketSize = sPacketSize.toUInt();
-	//			ddp->KeepChannels = sPacketSize.toInt();
-	//			ddp->StartChannel = startChannel;
-	//			ddp->Channels = iChannels;
-	//			ddp->Enabled = active;
-	//			m_outputs.push_back(std::move(ddp));
-	//			emit AddController(active, nType, ipAddress, sChannels);
-	//		}
-	//		else if ("E131" == nType)
-	//		{
-	//			QString const sPacketSize = networkXML.attribute("MaxChannels", "510");
-	//			auto e131 = std::make_unique<E131Output>();
-	//			e131->IP = ipAddress;
-	//			e131->PacketSize = sPacketSize.toUInt();
-	//			e131->Universe = universe.toUInt();
-	//			e131->StartChannel = startChannel;
-	//			e131->Channels = iChannels;//todo fix
-	//			e131->Enabled = active;
-	//			m_outputs.push_back(std::move(e131));
-	//			emit AddController(active, nType, ipAddress, sChannels);
-	//		}
-	//		else if ("ArtNet" == nType)
-	//		{
-	//			QString const sPacketSize = networkXML.attribute("MaxChannels", "510");
-	//			auto artnet = std::make_unique<ArtNetOutput>();
-	//			artnet->IP = ipAddress;
-	//			artnet->PacketSize = sPacketSize.toUInt();
-	//			artnet->Universe = universe.toUInt();
-	//			artnet->StartChannel = startChannel;
-	//			artnet->Channels = iChannels;//todo fix
-	//			artnet->Enabled = active;
-	//			m_outputs.push_back(std::move(artnet));
-	//			emit AddController(active, nType, ipAddress, sChannels);
-	//		}
-	//		else
-	//		{
-	//			m_logger->warn("Unsupported output type: {}", nType.toStdString());
-	//			//unsupported type
-	//		}
-	//		startChannel += iChannels;
-	//	}
-	//}
-	//emit SetChannelCount(startChannel - 1);
+				auto ddp = std::make_unique<DDPOutput>();
+				ddp->IP = ipAddress;
+				ddp->PacketSize = std::stoul( sPacketSize);
+				ddp->KeepChannels = std::stoi(sPacketSize);
+				ddp->StartChannel = startChannel;
+				ddp->Channels = iChannels;
+				ddp->Enabled = active;
+				m_outputs.push_back(std::move(ddp));
+			}
+			else if ("E131" == nType)
+			{
+				std::string sPacketSize = networkXML->Attribute("MaxChannels");
+				if(sPacketSize.empty()) sPacketSize = "510";
+				auto e131 = std::make_unique<E131Output>();
+				e131->IP = ipAddress;
+				e131->PacketSize = std::stoul( sPacketSize);
+				e131->Universe = std::stoul(universe);
+				e131->StartChannel = startChannel;
+				e131->Channels = iChannels;//todo fix
+				e131->Enabled = active;
+				m_outputs.push_back(std::move(e131));
+			}
+			else if ("ArtNet" == nType)
+			{
+				std::string sPacketSize = networkXML->Attribute("MaxChannels");
+				if(sPacketSize.empty()) sPacketSize = "510";
+				auto artnet = std::make_unique<ArtNetOutput>();
+				artnet->IP = ipAddress;
+				artnet->PacketSize =std::stoul( sPacketSize);
+				artnet->Universe = std::stoul(universe);
+				artnet->StartChannel = startChannel;
+				artnet->Channels = iChannels;//todo fix
+				artnet->Enabled = active;
+				m_outputs.push_back(std::move(artnet));
+			}
+			else
+			{
+				m_logger->warn("Unsupported output type: {}", nType);
+				//unsupported type
+			}
+			startChannel += iChannels;
+
+			networkXML = networkXML->NextSiblingElement("network");
+		}
+
+		controllerXML = controllerXML->NextSiblingElement("Controller");
+	}
+
+	m_channelCount = (startChannel - 1);
 	return true;
 }

@@ -56,10 +56,10 @@ public:
 
 private:
 
-    void ReadPlaylists(QJsonObject const& json);
-    void ReadSchedules(QJsonObject const& json);
-    void WritePlaylists(QJsonObject& json) const;
-    void WriteSchedules(QJsonObject& json) const;
+    //void ReadPlaylists(QJsonObject const& json);
+    //void ReadSchedules(QJsonObject const& json);
+    //void WritePlaylists(QJsonObject& json) const;
+    //void WriteSchedules(QJsonObject& json) const;
 
     void PlayNextSequence();
     void PlayNewPlaylist(std::string const& playlistName);
@@ -67,8 +67,8 @@ private:
     std::vector<PlayList> m_playlists;
     std::vector<Schedule> m_schedules;
 
-    std::unique_ptr<QTimer> m_scheduleTimer{nullptr};
-    QThread m_scheduleThread;
+    //std::unique_ptr<QTimer> m_scheduleTimer{nullptr};
+   // QThread m_scheduleThread;
 
     std::string m_currentPlaylist;
     //QString m_currentSequence;

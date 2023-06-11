@@ -41,11 +41,11 @@ public:
 
     void StopSequence();
     void LoadOutputs(std::string const& configPath);
-    void SendSync(uint64_t frameIdx);
+    void SendSync(uint32_t frameIdx);
 
 
     void TriggerOutputData();
-    void TriggerTimedOutputData(uint64_t timeMS);
+    void TriggerTimedOutputData(uint32_t timeMS);
 
     void SetMultisync(bool enabled);  
 
@@ -78,15 +78,15 @@ private:
     //float m_seqRefreshRate{0};
     uint64_t channelsCount{0};
 
-    std::unique_ptr<QTimer> m_playbackTimer{nullptr};
-    QThread m_playbackThread;
+    //std::unique_ptr<QTimer> m_playbackTimer{nullptr};
+    //QThread m_playbackThread;
 
     SeqType m_seqType { SeqType::Animation };
 
     //std::atomic_int m_lastFrameRead;
     FSEQFile::FrameData* m_lastFrameData{nullptr};
 
-    std::unique_ptr<QMediaPlayer> m_mediaPlayer{nullptr};
+    //std::unique_ptr<QMediaPlayer> m_mediaPlayer{nullptr};
 
     std::unique_ptr<OutputManager> m_outputManager{nullptr};
 

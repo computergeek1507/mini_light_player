@@ -22,6 +22,6 @@ private:
     std::string m_appdir;
     std::string m_showfolder;
 
-}
+};
 
 #endif // MINI_PLAYER_H

@@ -2,7 +2,7 @@
 #define PLAYLISTITEM_H
 
 #include <string>
-#include <QJsonObject>
+
 
 struct PlayListItem
 {
@@ -16,22 +16,22 @@ struct PlayListItem
 	{
 	}
 
-	explicit PlayListItem(QJsonObject const& json)
-	{
-		read(json);
-	}
-
-	void write(QJsonObject& json) const
-	{
-		json["seq"] = SequenceFile;
-		json["media"] = MediaFile;
-	}
-
-	void read(const QJsonObject& json)
-	{
-		SequenceFile = json["seq"].toString();
-		MediaFile = json["media"].toString();
-	}
+	//explicit PlayListItem(QJsonObject const& json)
+	//{
+	//	read(json);
+	//}
+	//
+	//void write(QJsonObject& json) const
+	//{
+	//	json["seq"] = SequenceFile;
+	//	json["media"] = MediaFile;
+	//}
+	//
+	//void read(const QJsonObject& json)
+	//{
+	//	SequenceFile = json["seq"].toString();
+	//	MediaFile = json["media"].toString();
+	//}
 };
 
 #endif

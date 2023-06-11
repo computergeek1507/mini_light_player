@@ -2,39 +2,34 @@
 
 #include "PlayList.h"
 
-#include <QFile>
-#include <QDir>
-#include <QTextStream>
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QJsonArray>
+#include <filesystem>
 
 PlayListManager::PlayListManager():
-	m_scheduleTimer(std::make_unique<QTimer>(this)),
+	//m_scheduleTimer(std::make_unique<QTimer>(this)),
 		m_logger(spdlog::get("miniplayer"))
 {
-	m_scheduleTimer->setInterval(2000);
-	m_scheduleTimer->moveToThread(&m_scheduleThread);
+	//m_scheduleTimer->setInterval(2000);
+	//m_scheduleTimer->moveToThread(&m_scheduleThread);
 
-	connect(&m_scheduleThread, SIGNAL(started()), m_scheduleTimer.get(), SLOT(start()));
-	connect(m_scheduleTimer.get(), SIGNAL(timeout()), this, SLOT(CheckSchedule()));
-	connect(this, SIGNAL(finished()), m_scheduleTimer.get(), SLOT(stop()));
-	connect(this, SIGNAL(finished()), &m_scheduleThread, SLOT(quit()));
-	m_scheduleThread.start();
+	//connect(&m_scheduleThread, SIGNAL(started()), m_scheduleTimer.get(), SLOT(start()));
+	//connect(m_scheduleTimer.get(), SIGNAL(timeout()), this, SLOT(CheckSchedule()));
+	//connect(this, SIGNAL(finished()), m_scheduleTimer.get(), SLOT(stop()));
+	//connect(this, SIGNAL(finished()), &m_scheduleThread, SLOT(quit()));
+	//m_scheduleThread.start();
 }
 
 PlayListManager::~PlayListManager()
 {
-	m_scheduleTimer->stop();
-	m_scheduleThread.requestInterruption();
-	m_scheduleThread.quit();
-	m_scheduleThread.wait();
+	//m_scheduleTimer->stop();
+	//m_scheduleThread.requestInterruption();
+	//m_scheduleThread.quit();
+	//m_scheduleThread.wait();
 }
 
 bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 {
-	std::string const filepath = configFolder + QDir::separator() + "scottplayer.json";
-	if(!QFile::exists(configFolder))
+	std::string const filepath = configFolder + "/" + "scottplayer.json";
+	if(!std::filesystem::exists(configFolder))
 	{
 		m_logger->warn("config file not found: {}", configFolder);
 		return false;
@@ -45,7 +40,7 @@ bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 
 void PlayListManager::SavePlayLists(std::string const& configFolder)
 {
-	std::string const filepath = configFolder + QDir::separator() + "scottplayer.json";
+	std::string const filepath = configFolder  + "/" + "scottplayer.json";
 	SaveJsonFile(filepath);
 	//MessageSend("Saved: scottplayer.json" );
 }
@@ -62,8 +57,8 @@ void PlayListManager::PlaySequence(int playlist_index, int sequence_index) const
 		return;
 	}
 
-	PlaySequenceSend(m_playlists.at(playlist_index).PlayListItems.at(sequence_index).SequenceFile,
-		m_playlists.at(playlist_index).PlayListItems.at(sequence_index).MediaFile);
+	//PlaySequenceSend(m_playlists.at(playlist_index).PlayListItems.at(sequence_index).SequenceFile,
+	//	m_playlists.at(playlist_index).PlayListItems.at(sequence_index).MediaFile);
 }
 
 void PlayListManager::DeleteSequence(int playlist_index, int sequence_index)
@@ -79,7 +74,7 @@ void PlayListManager::DeleteSequence(int playlist_index, int sequence_index)
 	}
 
 	m_playlists.at(playlist_index).PlayListItems.erase(m_playlists.at(playlist_index).PlayListItems.begin() +sequence_index);
-	emit DisplayPlaylistSend(playlist_index);
+	//emit DisplayPlaylistSend(playlist_index);
 }
 
 void PlayListManager::MoveSequenceUp(int playlist_index, int sequence_index)
@@ -97,8 +92,8 @@ void PlayListManager::MoveSequenceUp(int playlist_index, int sequence_index)
 	std::swap(m_playlists.at(playlist_index).PlayListItems.at(sequence_index),
 		m_playlists.at(playlist_index).PlayListItems.at(sequence_index - 1));
 
-	emit DisplayPlaylistSend(playlist_index);
-	emit SelectSequenceSend(sequence_index - 1);
+	//emit DisplayPlaylistSend(playlist_index);
+	//emit SelectSequenceSend(sequence_index - 1);
 }
 void PlayListManager::MoveSequenceDown(int playlist_index, int sequence_index) 
 {
@@ -115,8 +110,8 @@ void PlayListManager::MoveSequenceDown(int playlist_index, int sequence_index)
 	std::swap(m_playlists.at(playlist_index).PlayListItems.at( sequence_index),
 		m_playlists.at(playlist_index).PlayListItems.at(sequence_index + 1));
 	
-	emit DisplayPlaylistSend(playlist_index);
-	emit SelectSequenceSend(sequence_index + 1);
+	//emit DisplayPlaylistSend(playlist_index);
+	//emit SelectSequenceSend(sequence_index + 1);
 }
 
 void PlayListManager::DeletePlayList(int playlist_index)
@@ -153,7 +148,7 @@ void PlayListManager::AddSequence(std::string const& fseqPath, std::string const
 		return;
 	}
 	m_playlists.at(index).PlayListItems.emplace_back(fseqPath, mediaPath);
-	emit DisplayPlaylistSend(index);
+	//emit DisplayPlaylistSend(index);
 }
 
 void PlayListManager::AddSchedule(Schedule schedule)
@@ -209,81 +204,81 @@ void PlayListManager::MoveScheduleDown(int schedule_index)
 
 void PlayListManager::LoadJsonFile(const std::string& jsonFile)
 {
-	QFile loadFile(jsonFile);
-	if (!loadFile.open(QIODevice::ReadOnly))
-	{
-		return;
-	}
-
-	QByteArray saveData = loadFile.readAll();
-
-	QJsonDocument loadDoc(QJsonDocument::fromJson(saveData));
-
-	ReadPlaylists(loadDoc.object());
-	ReadSchedules(loadDoc.object());
+	//QFile loadFile(jsonFile);
+	//if (!loadFile.open(QIODevice::ReadOnly))
+	//{
+	//	return;
+	//}
+	//
+	//QByteArray saveData = loadFile.readAll();
+	//
+	//QJsonDocument loadDoc(QJsonDocument::fromJson(saveData));
+	//
+	//ReadPlaylists(loadDoc.object());
+	//ReadSchedules(loadDoc.object());
 }
 
 void PlayListManager::SaveJsonFile(const std::string& jsonFile)
 {
-	QFile saveFile(jsonFile);
-	if (!saveFile.open(QIODevice::WriteOnly))
-	{
-		return;
-	}
-
-	QJsonObject projectObject;
-	WritePlaylists(projectObject);
-	WriteSchedules(projectObject);
-	QJsonDocument saveDoc(projectObject);
-	saveFile.write(saveDoc.toJson());
+	//QFile saveFile(jsonFile);
+	//if (!saveFile.open(QIODevice::WriteOnly))
+	//{
+	//	return;
+	//}
+	//
+	//QJsonObject projectObject;
+	//WritePlaylists(projectObject);
+	//WriteSchedules(projectObject);
+	//QJsonDocument saveDoc(projectObject);
+	//saveFile.write(saveDoc.toJson());
 }
 
-void PlayListManager::ReadPlaylists(QJsonObject const& json)
-{
-	m_playlists.clear();
-	QJsonArray playlistArray = json["playlists"].toArray();
-	for (auto const& playlist : playlistArray)
-	{
-		QJsonObject playlistObj = playlist.toObject();
-		m_playlists.emplace_back(playlistObj);
-		emit AddPlaylistSend(m_playlists.back().Name, m_playlists.size() - 1 );
-	}
-}
+//void PlayListManager::ReadPlaylists(QJsonObject const& json)
+//{
+//	m_playlists.clear();
+//	QJsonArray playlistArray = json["playlists"].toArray();
+//	for (auto const& playlist : playlistArray)
+//	{
+//		QJsonObject playlistObj = playlist.toObject();
+//		m_playlists.emplace_back(playlistObj);
+//		emit AddPlaylistSend(m_playlists.back().Name, m_playlists.size() - 1 );
+//	}
+//}
 
-void PlayListManager::ReadSchedules(QJsonObject const& json)
-{
-	m_schedules.clear();
-	QJsonArray scheduleArray = json["schedules"].toArray();
-	for (auto const& schedule :scheduleArray)
-	{
-		QJsonObject scheduleObj = schedule.toObject();
-		m_schedules.emplace_back(scheduleObj);
-	}
-}
+//void PlayListManager::ReadSchedules(QJsonObject const& json)
+//{
+//	m_schedules.clear();
+//	QJsonArray scheduleArray = json["schedules"].toArray();
+//	for (auto const& schedule :scheduleArray)
+//	{
+//		QJsonObject scheduleObj = schedule.toObject();
+//		m_schedules.emplace_back(scheduleObj);
+//	}
+//}
+//
+//void PlayListManager::WritePlaylists(QJsonObject& json) const
+//{
+//	QJsonArray playlistArray;
+//	for (auto const& playlist : m_playlists)
+//	{
+//		QJsonObject playlistObj;
+//		playlist.write(playlistObj);
+//		playlistArray.append(playlistObj);
+//	}
+//	json["playlists"] = playlistArray;
+//}
 
-void PlayListManager::WritePlaylists(QJsonObject& json) const
-{
-	QJsonArray playlistArray;
-	for (auto const& playlist : m_playlists)
-	{
-		QJsonObject playlistObj;
-		playlist.write(playlistObj);
-		playlistArray.append(playlistObj);
-	}
-	json["playlists"] = playlistArray;
-}
-
-void PlayListManager::WriteSchedules(QJsonObject& json) const
-{
-	QJsonArray scheduleArray;
-	for (auto const& schedule : m_schedules)
-	{
-		QJsonObject scheduleObj;
-		schedule.write(scheduleObj);
-		scheduleArray.append(scheduleObj);
-	}
-	json["schedules"] = scheduleArray;
-}
+//void PlayListManager::WriteSchedules(QJsonObject& json) const
+//{
+//	QJsonArray scheduleArray;
+//	for (auto const& schedule : m_schedules)
+//	{
+//		QJsonObject scheduleObj;
+//		schedule.write(scheduleObj);
+//		scheduleArray.append(scheduleObj);
+//	}
+//	json["schedules"] = scheduleArray;
+//}
 
 [[nodiscard]] std::optional< std::reference_wrapper< PlayList const > > PlayListManager::GetPlayList(int index) const
 {
@@ -297,7 +292,7 @@ void PlayListManager::WriteSchedules(QJsonObject& json) const
 [[nodiscard]] std::optional< std::reference_wrapper< PlayList const > > PlayListManager::GetPlayList(std::string const& name) const
 {
 	if (auto const found{ std::find_if(m_playlists.cbegin(),m_playlists.cend(),
-											[&name](auto& c) { return c.Name.compare(name, Qt::CaseInsensitive) == 0; }) };
+											[&name](auto& c) { return c.Name==name; }) };
 		found != m_playlists.cend())
 	{
 		return *found;
@@ -320,30 +315,30 @@ void PlayListManager::CheckSchedule()
 	{
 		return; 
 	}
-	auto const& current = QDateTime::currentDateTime();
+	//auto const& current = QDateTime::currentDateTime();
 
-	for (auto const& schedule : m_schedules)
-	{
-		if (current.date() < schedule.StartDate || current.date() > schedule.EndDate)
-		{
-			continue;
-		}
-		if (current.time() < schedule.StartTime || current.time() > schedule.EndTime)
-		{
-			continue;
-		}
-		if (!schedule.Days.contains(QDate::shortDayName(current.date().dayOfWeek()))) 
-		{
-			continue;
-		}
-		if (schedule.PlayListName == m_currentPlaylist)
-		{
-			PlayNextSequence();
-			break;
-		}
-		PlayNewPlaylist(schedule.PlayListName);
-		break;
-	}
+	//for (auto const& schedule : m_schedules)
+	//{
+	//	if (current.date() < schedule.StartDate || current.date() > schedule.EndDate)
+	//	{
+	//		continue;
+	//	}
+	//	if (current.time() < schedule.StartTime || current.time() > schedule.EndTime)
+	//	{
+	//		continue;
+	//	}
+	//	if (!schedule.Days.contains(QDate::shortDayName(current.date().dayOfWeek()))) 
+	//	{
+	//		continue;
+	//	}
+	//	if (schedule.PlayListName == m_currentPlaylist)
+	//	{
+	//		PlayNextSequence();
+	//		break;
+	//	}
+	//	PlayNewPlaylist(schedule.PlayListName);
+	//	break;
+	//}
 }
 
 void PlayListManager::PlayNextSequence()
@@ -352,8 +347,8 @@ void PlayListManager::PlayNextSequence()
 	{
 		auto const& playlist = playlistRef->get();
 
-		emit PlaySequenceSend(playlist.PlayListItems[m_nextSequenceIdx].SequenceFile,
-			playlist.PlayListItems[m_nextSequenceIdx].MediaFile);
+		//emit PlaySequenceSend(playlist.PlayListItems[m_nextSequenceIdx].SequenceFile,
+		//	playlist.PlayListItems[m_nextSequenceIdx].MediaFile);
 		++m_nextSequenceIdx;
 		if (m_nextSequenceIdx >= playlist.PlayListItems.size())
 		{
@@ -370,8 +365,8 @@ void PlayListManager::PlayNewPlaylist(std::string const& playlistName)
 		m_nextSequenceIdx = 0;
 		m_currentPlaylist = playlistName;
 
-		emit PlaySequenceSend(playlist.PlayListItems[m_nextSequenceIdx].SequenceFile,
-			playlist.PlayListItems[m_nextSequenceIdx].MediaFile);
+		//emit PlaySequenceSend(playlist.PlayListItems[m_nextSequenceIdx].SequenceFile,
+		//	playlist.PlayListItems[m_nextSequenceIdx].MediaFile);
 		++m_nextSequenceIdx;
 		if (m_nextSequenceIdx >= playlist.PlayListItems.size())
 		{

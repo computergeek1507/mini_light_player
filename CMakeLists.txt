@@ -8,18 +8,6 @@ add_compile_definitions(NO_ZLIB)
 
 include(FetchContent)
 
-FetchContent_Declare(
-        zstd
-        GIT_REPOSITORY https://github.com/facebook/zstd.git
-        GIT_TAG        v1.5.2
-)
-
-FetchContent_GetProperties(zstd)
-if (NOT zstd_POPULATED)
-    FetchContent_Populate(zstd)
-    add_subdirectory(${zstd_SOURCE_DIR}/build/cmake ${zstd_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
-
 #set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,7 +29,31 @@ CPMAddPackage("gh:chriskohlhoff/asio#asio-1-18-1@1.18.1")
 CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
 CPMAddPackage("gh:andreacasalino/Minimal-Socket#master")
 
+cpmaddpackage(
+  NAME
+  zstd
+  GITHUB_REPOSITORY
+  facebook/zstd
+  VERSION
+  1.5.2
+  SOURCE_SUBDIR
+  build/cmake
+  OPTIONS
+  "ZSTD_LEGACY_SUPPORT OFF")
+
+cpmaddpackage(NAME zlib VERSION 1.2.12.2 GITHUB_REPOSITORY horta/zlib)
+
+if(zstd_ADDED)
+  if(NOT TARGET ZSTD::zstd)
+    add_library(ZSTD::zstd ALIAS libzstd_static)
+    set_target_properties(
+      libzstd_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                "$<BUILD_INTERFACE:${zstd_SOURCE_DIR}/lib>")
+  endif()
+endif()
+
 if(asio_ADDED)
+    message(STATUS "asio ADDED")
   add_library(asio INTERFACE)
 
   target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
@@ -81,14 +93,16 @@ if(asio_ADDED)
   endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog libzstd_shared nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2 MinimalSocket)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2 MinimalSocket)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC ZLIB::zlibstatic)
+target_link_libraries(${PROJECT_NAME} PUBLIC ZSTD::zstd)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
 )
 
 
