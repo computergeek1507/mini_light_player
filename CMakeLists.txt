@@ -24,8 +24,8 @@ include(cmake/CPM.cmake)
 find_package(Threads REQUIRED)
 
 CPMAddPackage("gh:nlohmann/json@3.10.5")
-CPMAddPackage("gh:gabime/spdlog@1.8.2")
-CPMAddPackage("gh:chriskohlhoff/asio#asio-1-18-1@1.18.1")
+CPMAddPackage("gh:gabime/spdlog@1.11.0")
+CPMAddPackage("gh:chriskohlhoff/asio#asio-1-28-0@1.28.0")
 CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
 CPMAddPackage("gh:andreacasalino/Minimal-Socket#master")
 

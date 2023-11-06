@@ -5,6 +5,11 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+#include <asio.hpp>
+#include <asio/basic_deadline_timer.hpp>
+
+#include "interval_timer.h"
+
 #include <filesystem>
 #include <utility>
 
@@ -40,7 +45,15 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 	m_playlists = std::make_unique<PlayListManager>();	
 	m_player->LoadConfigs(m_showfolder);
 	m_playlists->LoadPlayLists(m_showfolder);
-	//m_showfolder = lastfolder;
 
+	asio::io_context io;
+
+    interval_timer abc { io, 50ms, [] {
+        std::cout << "TEST_ABC" << std::endl;
+    } };
+
+
+    io.run();
+	//m_showfolder = lastfolder;
 
 }
