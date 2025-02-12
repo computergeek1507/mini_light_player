@@ -235,12 +235,12 @@ void SequencePlayer::StartAnimationSeq()
 
 void SequencePlayer::StartMusicSeq()
 {
-	//if(!QFile::exists(m_mediaFile))
-	//{
-	//	m_logger->error("Unable to find media file: {}", m_mediaFile.toStdString());
+	if(!std::filesystem::exists(m_mediaFile))
+	{
+		m_logger->error("Unable to find media file: {}", m_mediaFile);
 	//	emit UpdatePlaybackStatus("", PlaybackStatus::Stopped);
-	//	return;
-	//}
+		return;
+	}
 	//m_mediaPlayer->setNotifyInterval(m_seqStepTime);
 	//m_mediaPlayer->setMedia(QUrl::fromLocalFile(m_mediaFile));
 	////auto test = m_mediaPlayer->mediaStatus();

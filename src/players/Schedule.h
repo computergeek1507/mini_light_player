@@ -4,6 +4,8 @@
 #include <chrono>
 #include <string>
 
+#include <nlohmann/json.hpp>
+
 struct Schedule
 {
 	//QString Name;
@@ -26,32 +28,21 @@ struct Schedule
 
 	}
 
-	//Schedule(QJsonObject const& json)
-	//{
-	//	read(json);
-	//}
-	//
-	//void write(QJsonObject& json) const
-	//{
-	//	//json["name"] = Name;
-	//	json["playList"] = PlayListName;
-	//	json["startTime"] = QJsonValue::fromVariant(StartTime);
-	//	json["endTime"] = QJsonValue::fromVariant(EndTime);
-	//	json["startDate"] = QJsonValue::fromVariant(StartDate);
-	//	json["endDate"] = QJsonValue::fromVariant(EndDate);
-	//	json["days"] = QJsonValue::fromVariant(Days);
-	//}
-	//
-	//void read(const QJsonObject& json)
-	//{
-	//	//Name = json["name"].toString();
-	//	PlayListName = json["playList"].toString();
-	//	StartTime = json["startTime"].toVariant().toTime();
-	//	EndTime = json["endTime"].toVariant().toTime();
-	//	StartDate = json["startDate"].toVariant().toDate();
-	//	EndDate = json["endDate"].toVariant().toDate();
-	//	Days = json["days"].toVariant().toStringList();
-	//}
+	Schedule(nlohmann::json const& json)
+	{
+		read(json);
+	}
+
+	void read(nlohmann::json const& json)
+	{
+		//Name = json["name"].toString();
+		json.at("playList").get_to(PlayListName);
+		//StartTime = json["startTime"].toVariant().toTime();
+		//EndTime = json["endTime"].toVariant().toTime();
+		//StartDate = json["startDate"].toVariant().toDate();
+		//EndDate = json["endDate"].toVariant().toDate();
+		//Days = json["days"].toVariant().toStringList();
+	}
 };
 
 

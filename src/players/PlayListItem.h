@@ -2,7 +2,7 @@
 #define PLAYLISTITEM_H
 
 #include <string>
-
+#include <nlohmann/json.hpp>
 
 struct PlayListItem
 {
@@ -16,10 +16,10 @@ struct PlayListItem
 	{
 	}
 
-	//explicit PlayListItem(QJsonObject const& json)
-	//{
-	//	read(json);
-	//}
+	explicit PlayListItem(nlohmann::json const& json)
+	{
+		read(json);
+	}
 	//
 	//void write(QJsonObject& json) const
 	//{
@@ -27,11 +27,11 @@ struct PlayListItem
 	//	json["media"] = MediaFile;
 	//}
 	//
-	//void read(const QJsonObject& json)
-	//{
-	//	SequenceFile = json["seq"].toString();
-	//	MediaFile = json["media"].toString();
-	//}
+	void read(nlohmann::json const& json)
+	{
+		json.at("seq").get_to(SequenceFile);
+		json.at("media").get_to(MediaFile);
+	}
 };
 
 #endif

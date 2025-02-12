@@ -6,8 +6,7 @@
 
 #include "PlayListItem.h"
 
-//#include <QJsonObject>
-//#include <QJsonArray>
+#include <nlohmann/json.hpp>
 
 struct PlayList
 {
@@ -16,37 +15,23 @@ struct PlayList
 	PlayList(std::string const& name):Name(name)
 	{ }
 
-	//PlayList(QJsonObject const& json)
-	//{
-	//	read(json);
-	//}
+	PlayList(nlohmann::json const& json)
+	{
+		read(json);
+	}
 
 	std::vector<PlayListItem> PlayListItems;
 	std::string Name;
 
-	//void write(QJsonObject& json) const
-	//{
-	//	json["name"] = Name;
-	//	QJsonArray itemArray;
-	//	for (auto const& item : PlayListItems)
-	//	{
-	//		QJsonObject itemObj;
-	//		item.write(itemObj);
-	//		itemArray.append(itemObj);
-	//	}
-	//	json["items"] = itemArray;
-	//}
-	//
-	//void read(const QJsonObject& json)
-	//{
-	//	Name = json["name"].toString();
-	//	QJsonArray itemArray = json["items"].toArray();
-	//	for (auto const& item : itemArray)
-	//	{
-	//		QJsonObject itemObj = item.toObject();
-	//		PlayListItems.emplace_back(itemObj);
-	//	}
-	//}
+	void read(const nlohmann::json& json)
+	{
+		json.at("name").get_to(Name);
+
+		for (auto& item : json.at("items"))
+		{
+			PlayListItems.emplace_back(item);
+		}
+	}
 };
 
 #endif

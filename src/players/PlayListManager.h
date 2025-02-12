@@ -12,6 +12,8 @@
 #include <optional>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 struct PlayList;
 //struct Schedule;
 
@@ -34,30 +36,21 @@ public:
     void UpdateStatus(std::string const& sequencePath, PlaybackStatus status);
 
     void LoadJsonFile(const std::string& jsonFile);
-	void SaveJsonFile(const std::string& jsonFile);
+
     void AddPlaylistName(std::string const& playlist);
     void AddSequence(std::string const& fseqPath, std::string const& mediaPath, int index);
 
     void PlaySequence(int playlist_index, int sequence_index) const;
-    void DeleteSequence(int playlist_index, int sequence_index);
-    void DeletePlayList(int playlist_index);
-    void MoveSequenceUp(int playlist_index, int sequence_index);
-    void MoveSequenceDown(int playlist_index, int sequence_index);
-
     void AddSchedule(Schedule schedule);
     void EditSchedule(int schedule_index, Schedule schedule);
-
-    void DeleteSchedule(int schedule_index);
-    void MoveScheduleUp(int schedule_index);
-    void MoveScheduleDown(int schedule_index);
 
     void CheckSchedule();
 
 
 private:
 
-    //void ReadPlaylists(QJsonObject const& json);
-    //void ReadSchedules(QJsonObject const& json);
+    void ReadPlaylists(nlohmann::json const& json);
+    void ReadSchedules(nlohmann::json const& json);
     //void WritePlaylists(QJsonObject& json) const;
     //void WriteSchedules(QJsonObject& json) const;
 
