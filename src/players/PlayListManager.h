@@ -3,17 +3,18 @@
 
 #include "SequencePlayer.h"
 
+#include "PlayListItem.h"
 #include "Schedule.h"
 
 #include "spdlog/spdlog.h"
 
+#include <functional>
 #include <string>
 #include <memory>
 #include <optional>
 #include <vector>
 
 struct PlayList;
-//struct Schedule;
 
 class PlayListManager
 {
@@ -38,7 +39,7 @@ public:
     void AddPlaylistName(std::string const& playlist);
     void AddSequence(std::string const& fseqPath, std::string const& mediaPath, int index);
 
-    void PlaySequence(int playlist_index, int sequence_index) const;
+    void PlaySequence(int playlist_index, int sequence_index);
     void DeleteSequence(int playlist_index, int sequence_index);
     void DeletePlayList(int playlist_index);
     void MoveSequenceUp(int playlist_index, int sequence_index);
@@ -51,27 +52,30 @@ public:
     void MoveScheduleUp(int schedule_index);
     void MoveScheduleDown(int schedule_index);
 
+    // Starts whatever the schedules say should be running now. Does nothing
+    // while a sequence is playing.
     void CheckSchedule();
 
+    // Replaces the Qt PlaySequenceSend signal. Called with the sequence and
+    // media paths recorded in the playlist.
+    using PlayHandler = std::function<void(std::string const& sequence, std::string const& media)>;
+    void SetPlayHandler(PlayHandler handler) { m_playHandler = std::move(handler); }
+
+    [[nodiscard]] bool HasSchedules() const { return !m_schedules.empty(); }
 
 private:
-
-    //void ReadPlaylists(QJsonObject const& json);
-    //void ReadSchedules(QJsonObject const& json);
-    //void WritePlaylists(QJsonObject& json) const;
-    //void WriteSchedules(QJsonObject& json) const;
 
     void PlayNextSequence();
     void PlayNewPlaylist(std::string const& playlistName);
 
+    void StartSequence(PlayListItem const& item);
+
     std::vector<PlayList> m_playlists;
     std::vector<Schedule> m_schedules;
 
-    //std::unique_ptr<QTimer> m_scheduleTimer{nullptr};
-   // QThread m_scheduleThread;
+    PlayHandler m_playHandler;
 
     std::string m_currentPlaylist;
-    //QString m_currentSequence;
     int m_nextSequenceIdx{0};
 
     PlaybackStatus m_status{PlaybackStatus::Stopped};

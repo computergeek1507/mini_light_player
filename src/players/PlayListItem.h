@@ -1,8 +1,9 @@
 #ifndef PLAYLISTITEM_H
 #define PLAYLISTITEM_H
 
-#include <string>
+#include <nlohmann/json.hpp>
 
+#include <string>
 
 struct PlayListItem
 {
@@ -15,23 +16,20 @@ struct PlayListItem
 		SequenceFile(seq), MediaFile(media)
 	{
 	}
-
-	//explicit PlayListItem(QJsonObject const& json)
-	//{
-	//	read(json);
-	//}
-	//
-	//void write(QJsonObject& json) const
-	//{
-	//	json["seq"] = SequenceFile;
-	//	json["media"] = MediaFile;
-	//}
-	//
-	//void read(const QJsonObject& json)
-	//{
-	//	SequenceFile = json["seq"].toString();
-	//	MediaFile = json["media"].toString();
-	//}
 };
+
+inline void to_json(nlohmann::json& json, PlayListItem const& item)
+{
+	json = nlohmann::json{
+		{ "seq", item.SequenceFile },
+		{ "media", item.MediaFile },
+	};
+}
+
+inline void from_json(nlohmann::json const& json, PlayListItem& item)
+{
+	item.SequenceFile = json.value("seq", std::string());
+	item.MediaFile = json.value("media", std::string());
+}
 
 #endif

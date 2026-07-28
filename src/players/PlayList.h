@@ -1,13 +1,12 @@
 #ifndef PLAYLIST_H
 #define PLAYLIST_H
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 #include <vector>
 
 #include "PlayListItem.h"
-
-//#include <QJsonObject>
-//#include <QJsonArray>
 
 struct PlayList
 {
@@ -16,37 +15,22 @@ struct PlayList
 	PlayList(std::string const& name):Name(name)
 	{ }
 
-	//PlayList(QJsonObject const& json)
-	//{
-	//	read(json);
-	//}
-
 	std::vector<PlayListItem> PlayListItems;
 	std::string Name;
-
-	//void write(QJsonObject& json) const
-	//{
-	//	json["name"] = Name;
-	//	QJsonArray itemArray;
-	//	for (auto const& item : PlayListItems)
-	//	{
-	//		QJsonObject itemObj;
-	//		item.write(itemObj);
-	//		itemArray.append(itemObj);
-	//	}
-	//	json["items"] = itemArray;
-	//}
-	//
-	//void read(const QJsonObject& json)
-	//{
-	//	Name = json["name"].toString();
-	//	QJsonArray itemArray = json["items"].toArray();
-	//	for (auto const& item : itemArray)
-	//	{
-	//		QJsonObject itemObj = item.toObject();
-	//		PlayListItems.emplace_back(itemObj);
-	//	}
-	//}
 };
+
+inline void to_json(nlohmann::json& json, PlayList const& playlist)
+{
+	json = nlohmann::json{
+		{ "name", playlist.Name },
+		{ "items", playlist.PlayListItems },
+	};
+}
+
+inline void from_json(nlohmann::json const& json, PlayList& playlist)
+{
+	playlist.Name = json.value("name", std::string());
+	playlist.PlayListItems = json.value("items", std::vector<PlayListItem>{});
+}
 
 #endif

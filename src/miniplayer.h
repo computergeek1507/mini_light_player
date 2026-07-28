@@ -20,7 +20,10 @@ public:
     // relative to the show folder.
     void Play(std::string const& sequence, std::string const& media = std::string());
 
-    // Blocks until playback finishes.
+    // Plays a single sequence and then exits, rather than following schedules.
+    void PlayOnce(std::string const& sequence, std::string const& media = std::string());
+
+    // Runs until the sequence ends, or forever following the schedule.
     void Run();
 
 private:
@@ -33,6 +36,7 @@ private:
     std::unique_ptr<PlayListManager> m_playlists{ nullptr };
     std::string m_appdir;
     std::string m_showfolder;
+    bool m_oneShot{ false };
 
 };
 

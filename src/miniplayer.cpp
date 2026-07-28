@@ -53,6 +53,13 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 	m_player = std::make_unique<SequencePlayer>();
 	m_playlists = std::make_unique<PlayListManager>();
 	m_player->LoadConfigs(m_showfolder);
+
+	// Replaces the Qt signal that used to connect the playlist to the player.
+	m_playlists->SetPlayHandler([this](std::string const& sequence, std::string const& media)
+		{
+			Play(sequence, media);
+		});
+
 	m_playlists->LoadPlayLists(m_showfolder);
 }
 
@@ -103,6 +110,12 @@ void MiniPlayer::Play(std::string const& sequence, std::string const& media)
 	m_player->LoadSequence(seqPath, ResolvePath(media));
 }
 
+void MiniPlayer::PlayOnce(std::string const& sequence, std::string const& media)
+{
+	m_oneShot = true;
+	Play(sequence, media);
+}
+
 void MiniPlayer::Run()
 {
 	// Ctrl+C must still reach the blackout, otherwise the props stay lit on
@@ -110,9 +123,32 @@ void MiniPlayer::Run()
 	std::signal(SIGINT, HandleSignal);
 	std::signal(SIGTERM, HandleSignal);
 
-	while (m_player->IsPlaying() && !g_stopRequested)
+	if (m_oneShot)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		while (m_player->IsPlaying() && !g_stopRequested)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
+	}
+	else if (m_playlists->HasSchedules())
+	{
+		m_logger->info("Waiting for a scheduled playlist, Ctrl+C to stop");
+
+		while (!g_stopRequested)
+		{
+			// The schedule only advances between sequences; a running sequence
+			// is always allowed to finish.
+			if (!m_player->IsPlaying())
+			{
+				m_playlists->UpdateStatus(std::string(), PlaybackStatus::Stopped);
+				m_playlists->CheckSchedule();
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+	}
+	else
+	{
+		m_logger->warn("Nothing to play: no sequence given and no schedules configured");
 	}
 
 	if (g_stopRequested)
