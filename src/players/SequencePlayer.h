@@ -8,6 +8,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include <atomic>
 #include <memory>
 #include <chrono>
 
@@ -47,7 +48,9 @@ public:
     void TriggerOutputData();
     void TriggerTimedOutputData(uint32_t timeMS);
 
-    void SetMultisync(bool enabled);  
+    void SetMultisync(bool enabled);
+
+    [[nodiscard]] bool IsPlaying() const { return m_playing; }
 
     void UpdateSequence(std::string const& sequenceName, std::string const& media, int frames, int frameSizeMS);
     void AddController(bool enabled, std::string const& type, std::string const& ip, std::string const& channels);
@@ -66,7 +69,7 @@ private:
     std::string m_seqFileName;
     std::string m_mediaFile;
     std::string m_mediaName;
-    FSEQFile* m_seqFile{nullptr};
+    std::unique_ptr<FSEQFile> m_seqFile{nullptr};
     //std::chrono::time_point<std::chrono::high_resolution_clock> m_seqMSElapsed;
     int m_seqMSDuration{0};
     //int m_seqMSElapsed{0};
@@ -83,8 +86,11 @@ private:
 
     SeqType m_seqType { SeqType::Animation };
 
-    //std::atomic_int m_lastFrameRead;
-    FSEQFile::FrameData* m_lastFrameData{nullptr};
+    std::atomic_bool m_playing{ false };
+
+    // getFrame() hands back ownership, so this must not be a raw pointer:
+    // overwriting it every frame leaked one FrameData per frame.
+    std::unique_ptr<FSEQFile::FrameData> m_lastFrameData{nullptr};
 
     //std::unique_ptr<QMediaPlayer> m_mediaPlayer{nullptr};
 

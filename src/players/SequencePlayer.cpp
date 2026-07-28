@@ -45,8 +45,6 @@ SequencePlayer::~SequencePlayer()
 	//m_playbackThread.requestInterruption();
 	//m_playbackThread.quit();
 	//m_playbackThread.wait();
-	delete m_seqFile;
-	delete m_lastFrameData;
 }
 
 void SequencePlayer::LoadConfigs(std::string const& configPath)
@@ -87,11 +85,20 @@ void SequencePlayer::LoadSequence(std::string const& sequencePath, std::string c
 
 void SequencePlayer::PlaySequence()
 {
-	m_outputManager->OpenOutputs();
+	if (!m_outputManager->OpenOutputs())
+	{
+		m_logger->error("No outputs could be opened, not playing {}", m_seqFileName);
+		return;
+	}
 	m_syncManager->OpenOutputs();
-	//start timer
+
 	m_lastFrameRead = 0;
-	m_lastFrameData = m_seqFile->getFrame(m_lastFrameRead);
+	m_lastFrameData.reset(m_seqFile->getFrame(m_lastFrameRead));
+	m_playing = true;
+
+	m_logger->info("Playing {} - {} frames at {}ms ({}s)",
+		m_seqFileName, m_numberofFrame, m_seqStepTime, m_seqMSDuration / 1000);
+
 	if(SeqType::Animation == m_seqType)
 	{
 		StartAnimationSeq();
@@ -115,11 +122,17 @@ void SequencePlayer::StopSequence()
 	//	m_mediaPlayer->stop();
 	//}
 
+	if (!m_playing.exchange(false))
+	{
+		return;
+	}
+
 	m_syncManager->SendStop();
 
-	//stop timer
 	m_outputManager->CloseOutputs();
 	m_syncManager->CloseOutputs();
+
+	m_logger->info("Sequence ended: {}", m_seqFileName);
 	//emit UpdateStatus("Sequence Ended " + m_seqFileName);
 	//emit UpdatePlaybackStatus("", PlaybackStatus::Stopped);
 }
@@ -129,6 +142,10 @@ void SequencePlayer::TriggerOutputData()
 	//int64_t timeMS = m_lastFrameRead * m_seqStepTime;
 
 	//qDebug() << "O:" << timeMS << "ms";
+	if (m_lastFrameData == nullptr)
+	{
+		return;
+	}
 	m_lastFrameData->readFrame((uint8_t*)m_seqData, FPPD_MAX_CHANNELS);
 	m_outputManager->OutputData((uint8_t*)m_seqData);
 	SendSync(m_lastFrameRead);
@@ -144,7 +161,7 @@ void SequencePlayer::TriggerOutputData()
 		StopSequence();
 		return;
 	}
-	m_lastFrameData = m_seqFile->getFrame(m_lastFrameRead);
+	m_lastFrameData.reset(m_seqFile->getFrame(m_lastFrameRead));
 }
 
 void SequencePlayer::TriggerTimedOutputData(uint32_t timeMS)
@@ -162,7 +179,11 @@ void SequencePlayer::TriggerTimedOutputData(uint32_t timeMS)
 	}
 
 	//qDebug() << "O:" << timeMS << "ms";
-	m_lastFrameData = m_seqFile->getFrame(approxFrame);
+	m_lastFrameData.reset(m_seqFile->getFrame(approxFrame));
+	if (m_lastFrameData == nullptr)
+	{
+		return;
+	}
 	m_lastFrameData->readFrame((uint8_t*)m_seqData, FPPD_MAX_CHANNELS);
 	m_outputManager->OutputData((uint8_t*)m_seqData);
 	
@@ -192,21 +213,20 @@ void SequencePlayer::SendSync(uint32_t frameIdx)
 
 bool SequencePlayer::LoadSeqFile(std::string const& sequencePath)
 {
-	m_seqFile = nullptr;
-	FSEQFile* seqFile = FSEQFile::openFSEQFile(sequencePath);
-	if (seqFile == nullptr)
+	// Releases any previously loaded sequence.
+	m_lastFrameData.reset();
+	m_seqFile.reset(FSEQFile::openFSEQFile(sequencePath));
+	if (m_seqFile == nullptr)
 	{
 		//emit UpdatePlaybackStatus("", PlaybackStatus::Stopped);
 		return false;
 	}
-	m_seqStepTime = seqFile->getStepTime();
+	m_seqStepTime = m_seqFile->getStepTime();
 
-	m_mediaFile = seqFile->getMediaFilename();
+	m_mediaFile = m_seqFile->getMediaFilename();
 
-	m_seqFile = seqFile;
-
-	m_seqMSDuration = seqFile->getNumFrames() * seqFile->getStepTime();
-	m_numberofFrame = seqFile->getNumFrames();
+	m_seqMSDuration = m_seqFile->getNumFrames() * m_seqFile->getStepTime();
+	m_numberofFrame = m_seqFile->getNumFrames();
 	return true;
 }
 

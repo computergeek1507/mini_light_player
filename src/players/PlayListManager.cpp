@@ -19,15 +19,6 @@ PlayListManager::PlayListManager():
 	//connect(this, SIGNAL(finished()), m_scheduleTimer.get(), SLOT(stop()));
 	//connect(this, SIGNAL(finished()), &m_scheduleThread, SLOT(quit()));
 	//m_scheduleThread.start();
-
-	asio::io_context io;
-
-	interval_timer abc{ io, 50ms, [] {
-		std::cout << "TEST_ABC" << std::endl;
-	} };
-
-
-	io.run();
 }
 
 PlayListManager::~PlayListManager()
@@ -43,7 +34,7 @@ bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 	std::string const filepath = configFolder + "/" + "scottplayer.json";
 	if(!std::filesystem::exists(filepath))
 	{
-		m_logger->warn("config file not found: {}", configFolder);
+		m_logger->warn("config file not found: {}", filepath);
 		return false;
 	}
 	LoadJsonFile(filepath);
@@ -59,18 +50,83 @@ void PlayListManager::SavePlayLists(std::string const& configFolder)
 
 void PlayListManager::PlaySequence(int playlist_index, int sequence_index) const
 {
-	if (playlist_index < 0 || playlist_index > m_playlists.size())
+	if (playlist_index < 0 || static_cast<size_t>(playlist_index) >= m_playlists.size())
 	{
 		return;
 	}
 
-	if (sequence_index < 0 || sequence_index > m_playlists.at(playlist_index).PlayListItems.size())
+	if (sequence_index < 0 || static_cast<size_t>(sequence_index) >= m_playlists.at(playlist_index).PlayListItems.size())
 	{
 		return;
 	}
 
 	//PlaySequenceSend(m_playlists.at(playlist_index).PlayListItems.at(sequence_index).SequenceFile,
 	//	m_playlists.at(playlist_index).PlayListItems.at(sequence_index).MediaFile);
+}
+
+void PlayListManager::DeleteSequence(int playlist_index, int sequence_index)
+{
+	if (playlist_index < 0 || static_cast<size_t>(playlist_index) >= m_playlists.size())
+	{
+		return;
+	}
+
+	if (sequence_index < 0 || static_cast<size_t>(sequence_index) >= m_playlists.at(playlist_index).PlayListItems.size())
+	{
+		return;
+	}
+
+	m_playlists.at(playlist_index).PlayListItems.erase(m_playlists.at(playlist_index).PlayListItems.begin() +sequence_index);
+	//emit DisplayPlaylistSend(playlist_index);
+}
+
+void PlayListManager::MoveSequenceUp(int playlist_index, int sequence_index)
+{
+	if (playlist_index < 0 || static_cast<size_t>(playlist_index) >= m_playlists.size())
+	{
+		return;
+	}
+
+	if (sequence_index <= 0 || static_cast<size_t>(sequence_index) >= m_playlists.at(playlist_index).PlayListItems.size())
+	{
+		return;
+	}
+
+	std::swap(m_playlists.at(playlist_index).PlayListItems.at(sequence_index),
+		m_playlists.at(playlist_index).PlayListItems.at(sequence_index - 1));
+
+	//emit DisplayPlaylistSend(playlist_index);
+	//emit SelectSequenceSend(sequence_index - 1);
+}
+void PlayListManager::MoveSequenceDown(int playlist_index, int sequence_index) 
+{
+	if (playlist_index < 0 || static_cast<size_t>(playlist_index) >= m_playlists.size())
+	{
+		return;
+	}
+
+	if (sequence_index < 0 || sequence_index + 1 >= m_playlists.at(playlist_index).PlayListItems.size())
+	{
+		return;
+	}
+
+	std::swap(m_playlists.at(playlist_index).PlayListItems.at( sequence_index),
+		m_playlists.at(playlist_index).PlayListItems.at(sequence_index + 1));
+	
+	//emit DisplayPlaylistSend(playlist_index);
+	//emit SelectSequenceSend(sequence_index + 1);
+}
+
+void PlayListManager::DeletePlayList(int playlist_index)
+{
+	if (playlist_index < 0 || static_cast<size_t>(playlist_index) >= m_playlists.size())
+	{
+		return;
+	}	
+
+	m_playlists.erase(m_playlists.begin() + playlist_index);
+
+	//redraw
 }
 
 void PlayListManager::UpdateStatus(std::string const& sequencePath, PlaybackStatus status)
@@ -90,7 +146,7 @@ void PlayListManager::AddPlaylistName(std::string const& playlist)
 
 void PlayListManager::AddSequence(std::string const& fseqPath, std::string const& mediaPath, int index)
 {
-	if (index < 0 || index >= m_playlists.size())
+	if (index < 0 || static_cast<size_t>(index) >= m_playlists.size())
 	{
 		return;
 	}
@@ -104,14 +160,46 @@ void PlayListManager::AddSchedule(Schedule schedule)
 	//emit DisplayScheduleSend();
 }
 
+void PlayListManager::DeleteSchedule(int schedule_index) 
+{
+	if (schedule_index < 0 || static_cast<size_t>(schedule_index) >= m_schedules.size())
+	{
+		return;
+	}
+
+	m_schedules.erase(m_schedules.begin() + schedule_index);
+	//emit DisplayScheduleSend();
+}
+
 void PlayListManager::EditSchedule(int schedule_index, Schedule schedule)
 {
-	if (schedule_index < 0 || schedule_index >= m_schedules.size())
+	if (schedule_index < 0 || static_cast<size_t>(schedule_index) >= m_schedules.size())
 	{
 		return;
 	}
 	m_schedules[schedule_index] = std::move(schedule);
 	//emit DisplayScheduleSend();
+}
+
+void PlayListManager::MoveScheduleUp(int schedule_index)
+{
+	if (schedule_index <= 0 || schedule_index >= m_schedules.size())
+	{
+		return;
+	}
+	std::swap(m_schedules.at(schedule_index),
+		m_schedules.at(schedule_index - 1));
+}
+
+void PlayListManager::MoveScheduleDown(int schedule_index)
+{
+	if (schedule_index < 0 || schedule_index + 1 >= m_schedules.size())
+	{
+		return;
+	}
+
+	std::swap(m_schedules.at(schedule_index),
+		m_schedules.at(schedule_index + 1));
 }
 
 void PlayListManager::LoadJsonFile(const std::string& jsonFile)
@@ -153,7 +241,7 @@ void PlayListManager::ReadSchedules(nlohmann::json const& json)
 
 [[nodiscard]] std::optional< std::reference_wrapper< PlayList const > > PlayListManager::GetPlayList(int index) const
 {
-	if (index < 0 || index > m_playlists.size())
+	if (index < 0 || static_cast<size_t>(index) >= m_playlists.size())
 	{
 		return std::nullopt;
 	}

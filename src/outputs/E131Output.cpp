@@ -72,17 +72,15 @@ bool E131Output::Open()
     _data[123] = 0x02;  // Property value count (high)
     _data[124] = 0x01;  // Property value count (low)
 
-    //m_UdpSocket = std::make_unique<QUdpSocket>(this);
-    const MinimalSocket::Address remote_address(IP, E131_PORT);
+    // Sending to a multicast group needs no group membership - that is only
+    // required to receive. The universe number forms the low 2 bytes.
+    std::string const destination = (IP == "MULTICAST" || IP.starts_with("239.255."))
+        ? "239.255." + std::to_string((int)UnivHi) + "." + std::to_string((int)UnivLo)
+        : IP;
 
-    if (IP.starts_with("239.255.") || IP == "MULTICAST") {
-        // multicast - universe number must be in lower 2 bytes
-       // QString ipaddrWithUniv = QString("239.255.%1.%2").arg((int)UnivHi).arg((int)UnivLo);
-       // m_UdpSocket->joinMulticastGroup(QHostAddress(ipaddrWithUniv));
-    }
-    else {
-        m_UdpSocket = std::make_unique<MinimalSocket::udp::UdpBinded>(E131_PORT, remote_address.getFamily());
-        m_UdpSocket->connect(remote_address);
+    if (!OpenSocket(destination, E131_PORT))
+    {
+        return false;
     }
 
     uint8_t NumHi = (PacketSize + 1) >> 8;   // Channels (high)
@@ -116,19 +114,19 @@ bool E131Output::Open()
 void E131Output::OutputFrame(uint8_t* data)
 {
     if (!Enabled || m_UdpSocket == nullptr ) return;
-    //size_t chs = (std::min)(size, (size_t)(GetMaxChannels() - channel));
 
-    size_t chs = PacketSize;
-    if (memcmp(&_data[E131_PACKET_HEADERLEN], &data[StartChannel - 1], chs) == 0) {
-        // nothing changed
-    }
-    else {
-        memcpy(&_data[E131_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
-    }
-    m_UdpSocket->sendTo((char*)&_data, E131_PACKET_LEN);
+    size_t const chs = PacketSize;
+    memcpy(&_data[E131_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
+
+    // Receivers use this to detect lost/reordered packets, it must advance every frame.
+    _data[111] = _sequenceNum;
+    ++_sequenceNum;
+
+    // Only the header plus the channels this universe actually carries.
+    Send(_data, E131_PACKET_HEADERLEN + chs);
 }
 
 void E131Output::Close()
 {
-    //m_UdpSocket->();
+    CloseSocket();
 }

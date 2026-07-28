@@ -5,22 +5,14 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-#include <asio.hpp>
-#include <asio/basic_deadline_timer.hpp>
-
-#include "interval_timer.h"
-
+#include <chrono>
 #include <filesystem>
+#include <thread>
 #include <utility>
 
 MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolder))
 {
 	auto const log_name{ "log.txt" };
-
-	//m_appdir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-	//std::filesystem::create_directory(m_appdir.toStdString());
-	//std::String logdir = m_appdir + "/log/";
-	//std::filesystem::create_directory(logdir.toStdString());
 
 	try
 	{
@@ -37,23 +29,74 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 	}
 	catch (std::exception& /*ex*/)
 	{
-		
+
 	}
 
+	if (!std::filesystem::is_directory(m_showfolder))
+	{
+		throw std::runtime_error("show folder not found: " + m_showfolder);
+	}
 
+	m_logger->info("Show folder: {}", m_showfolder);
+
+	// The logger must exist before these, they look it up by name.
 	m_player = std::make_unique<SequencePlayer>();
-	m_playlists = std::make_unique<PlayListManager>();	
+	m_playlists = std::make_unique<PlayListManager>();
 	m_player->LoadConfigs(m_showfolder);
 	m_playlists->LoadPlayLists(m_showfolder);
+}
 
-	asio::io_context io;
+MiniPlayer::~MiniPlayer() = default;
 
-    interval_timer abc { io, 50ms, [] {
-        std::cout << "TEST_ABC" << std::endl;
-    } };
+std::string MiniPlayer::ResolvePath(std::string const& name) const
+{
+	if (name.empty())
+	{
+		return name;
+	}
 
+	std::filesystem::path const given(name);
+	if (given.is_absolute() && std::filesystem::exists(given))
+	{
+		return given.string();
+	}
 
-    io.run();
-	//m_showfolder = lastfolder;
+	// xLights keeps sequences in per-year folders and audio under Media/Audio.
+	std::filesystem::path const root(m_showfolder);
+	if (std::filesystem::exists(root / given))
+	{
+		return (root / given).string();
+	}
 
+	std::error_code ec;
+	for (auto const& entry : std::filesystem::recursive_directory_iterator(
+			root, std::filesystem::directory_options::skip_permission_denied, ec))
+	{
+		if (entry.is_regular_file(ec) && entry.path().filename() == given.filename())
+		{
+			return entry.path().string();
+		}
+	}
+
+	return name;
+}
+
+void MiniPlayer::Play(std::string const& sequence, std::string const& media)
+{
+	std::string const seqPath = ResolvePath(sequence);
+	if (!std::filesystem::exists(seqPath))
+	{
+		m_logger->error("Sequence not found: {}", sequence);
+		return;
+	}
+
+	m_player->LoadSequence(seqPath, ResolvePath(media));
+}
+
+void MiniPlayer::Run()
+{
+	while (m_player->IsPlaying())
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
 }

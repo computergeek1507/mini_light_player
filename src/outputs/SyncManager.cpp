@@ -12,7 +12,7 @@
 
 SyncManager::SyncManager() :
 //	m_groupAddress(QHostAddress(MULTISYNC_MULTICAST_ADDRESS)),
-	m_logger(spdlog::get("scottplayer"))
+	m_logger(spdlog::get("miniplayer"))
 {
 
 }

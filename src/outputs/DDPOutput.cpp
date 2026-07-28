@@ -9,26 +9,13 @@ bool DDPOutput::Open()
 {
 	if (IP.empty() || !Enabled) return false;
 
-	//if (_fulldata != nullptr) delete _fulldata;
-    //_fulldata = (uint8_t*)malloc(Channels);
-    //if (_fulldata == nullptr) {
-    //
-    //    return false;
-    //}
-
 	memset(_data, 0x00, sizeof(_data));
 
     _data[2] = 1;
     _data[3] = DDP_ID_DISPLAY;
     _sequenceNum = 1;
 
-    //m_UdpSocket->connectToHost(IP, DDP_PORT);
-    const MinimalSocket::Address remote_address(IP, DDP_PORT);
-
-    m_UdpSocket = std::make_unique<MinimalSocket::udp::UdpBinded>(DDP_PORT, remote_address.getFamily());
-    m_UdpSocket->connect(remote_address);
-
-    return m_UdpSocket != nullptr;
+    return OpenSocket(IP, DDP_PORT);
 }
 
 void DDPOutput::OutputFrame(uint8_t* data)
@@ -60,9 +47,9 @@ void DDPOutput::OutputFrame(uint8_t* data)
         _data[8] = (thissend & 0xFF00) >> 8;
         _data[9] = thissend & 0x00FF;
 
-        memcpy(&_data[10], data + index, thissend);
+        memcpy(&_data[DDP_PACKET_HEADERLEN], data + index, thissend);
 
-        m_UdpSocket->sendTo((char*)&_data[0], DDP_PACKET_LEN - (1440 - thissend));
+        Send(_data, DDP_PACKET_HEADERLEN + thissend);
         _sequenceNum = _sequenceNum == 15 ? 1 : _sequenceNum + 1;
 
         tosend -= thissend;
@@ -73,5 +60,5 @@ void DDPOutput::OutputFrame(uint8_t* data)
 
 void DDPOutput::Close()
 {
-	//m_UdpSocket->close();
+	CloseSocket();
 }

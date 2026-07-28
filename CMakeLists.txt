@@ -27,7 +27,8 @@ CPMAddPackage("gh:nlohmann/json@3.10.5")
 CPMAddPackage("gh:gabime/spdlog@1.11.0")
 CPMAddPackage("gh:chriskohlhoff/asio#asio-1-28-0@1.28.0")
 CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
-CPMAddPackage("gh:andreacasalino/Minimal-Socket#master")
+# Pin a tag: tracking master silently changed the socket API mid-project.
+CPMAddPackage("gh:andreacasalino/Minimal-Socket#v.3.1")
 
 cpmaddpackage(
   NAME

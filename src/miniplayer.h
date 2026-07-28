@@ -14,8 +14,20 @@ class MiniPlayer
 {
 public:
     MiniPlayer(std::string showfolder);
+    ~MiniPlayer();
+
+    // Starts a sequence. sequence and media may be absolute paths or names
+    // relative to the show folder.
+    void Play(std::string const& sequence, std::string const& media = std::string());
+
+    // Blocks until playback finishes.
+    void Run();
 
 private:
+    // Resolves a possibly-relative name against the show folder, searching the
+    // usual xLights subdirectories.
+    std::string ResolvePath(std::string const& name) const;
+
     std::shared_ptr<spdlog::logger> m_logger{ nullptr };
     std::unique_ptr<SequencePlayer> m_player{ nullptr };
     std::unique_ptr<PlayListManager> m_playlists{ nullptr };

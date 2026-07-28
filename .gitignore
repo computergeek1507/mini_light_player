@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Build directories
+build/
+cmake_vs/
+log.txt
+src/config.h

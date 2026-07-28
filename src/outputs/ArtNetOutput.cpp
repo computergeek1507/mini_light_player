@@ -1,5 +1,7 @@
 #include "ArtNetOutput.h"
 
+#include "spdlog/spdlog.h"
+
 #include <memory>
 
 ArtNetOutput::ArtNetOutput()
@@ -12,7 +14,7 @@ bool ArtNetOutput::Open()
 	if (IP.empty() || !Enabled) return false;
 
     memset(_data, 0x00, sizeof(_data));
-    _sequenceNum = 0;
+    _sequenceNum = 1;
 
     _data[0] = 'A';   // ID[8]
     _data[1] = 'r';
@@ -27,40 +29,40 @@ bool ArtNetOutput::Open()
     _data[15] = ((Universe & 0xFF00) >> 8);
     _data[16] = 0x02; // we are going to send all 512 bytes
 
-    //m_UdpSocket = std::make_unique<QUdpSocket>(this);
-    const MinimalSocket::Address remote_address(IP, ARTNET_PORT);
-
     if (IP == "MULTICAST") {
-        //todo: maybe right?
-        //m_UdpSocket->joinMulticastGroup(QHostAddress("255.255.255.255"));
+        // Art-Net discovery uses broadcast, which needs SO_BROADCAST on the socket.
+        // Not reachable through MinimalSocket, so refuse rather than open a dead output.
+        auto logger = spdlog::get("miniplayer");
+        if (logger) logger->warn("ArtNet broadcast output is not supported, skipping universe {}", Universe);
+        return false;
     }
-    else {
-        m_UdpSocket = std::make_unique<MinimalSocket::udp::UdpBinded>(ARTNET_PORT, remote_address.getFamily());
-        m_UdpSocket->connect(remote_address);
-    }
-    
-    _data[16] = (uint8_t)(PacketSize >> 8);  // Property value count (high)
-    _data[17] = (uint8_t)(PacketSize & 0xff);  // Property value count (low)
 
-    return m_UdpSocket != nullptr;
+    if (!OpenSocket(IP, ARTNET_PORT))
+    {
+        return false;
+    }
+
+    _data[16] = (uint8_t)(PacketSize >> 8);  // Length (high)
+    _data[17] = (uint8_t)(PacketSize & 0xff);  // Length (low)
+
+    return true;
 }
 
 void ArtNetOutput::OutputFrame(uint8_t* data)
 {
     if (!Enabled || m_UdpSocket == nullptr ) return;
-    //size_t chs = (std::min)(size, (size_t)(GetMaxChannels() - channel));
 
-    size_t chs = PacketSize;
-    if (memcmp(&_data[ARTNET_PACKET_HEADERLEN], &data[StartChannel - 1], chs) == 0) {
-        // nothing changed
-    }
-    else {
-        memcpy(&_data[ARTNET_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
-    }
-    m_UdpSocket->sendTo((char*)&_data, ARTNET_PACKET_LEN);
+    size_t const chs = PacketSize;
+    memcpy(&_data[ARTNET_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
+
+    // Sequence 0 means "disable ordering", so the counter wraps 1..255.
+    _data[12] = _sequenceNum;
+    _sequenceNum = (_sequenceNum == 255) ? 1 : _sequenceNum + 1;
+
+    Send(_data, ARTNET_PACKET_HEADERLEN + chs);
 }
 
 void ArtNetOutput::Close()
 {
-    //m_UdpSocket->close();
+    CloseSocket();
 }
