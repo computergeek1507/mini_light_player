@@ -3,6 +3,7 @@
 
 #include "../fseq/FSEQFile.h"
 
+#include "../audio/AudioPlayer.h"
 #include "../outputs/OutputManager.h"
 #include "../outputs/SyncManager.h"
 
@@ -11,6 +12,8 @@
 #include <atomic>
 #include <memory>
 #include <chrono>
+#include <string>
+#include <thread>
 
 #define FPPD_MAX_CHANNELS (8192 * 1024)
 #define DATA_DUMP_SIZE 28
@@ -35,64 +38,62 @@ public:
     SequencePlayer();
     ~SequencePlayer();
 
-    void LoadConfigs(std::string const& configPath);
+    SequencePlayer(SequencePlayer const&) = delete;
+    SequencePlayer& operator=(SequencePlayer const&) = delete;
 
+    void LoadConfigs(std::string const& configPath);
 
     void LoadSequence(std::string const& sequencePath, std::string const& mediaPath = std::string());
 
+    // Stops playback and blocks until the playback thread has finished.
     void StopSequence();
+
     void LoadOutputs(std::string const& configPath);
     void SendSync(uint32_t frameIdx);
-
-
-    void TriggerOutputData();
-    void TriggerTimedOutputData(uint32_t timeMS);
 
     void SetMultisync(bool enabled);
 
     [[nodiscard]] bool IsPlaying() const { return m_playing; }
 
-    void UpdateSequence(std::string const& sequenceName, std::string const& media, int frames, int frameSizeMS);
-    void AddController(bool enabled, std::string const& type, std::string const& ip, std::string const& channels);
-    void UpdateStatus(std::string const& message);
-    void UpdateTime(std::string const& sequenceName, int elapsedMS, int durationMS);
-
-    void UpdatePlaybackStatus(std::string const& sequencePath, PlaybackStatus status);
+    [[nodiscard]] uint32_t GetDurationMS() const { return m_seqMSDuration; }
+    [[nodiscard]] std::string const& GetSequenceName() const { return m_seqFileName; }
 
 private:
     void PlaySequence();
     bool LoadSeqFile(std::string const& sequencePath);
-    void StartAnimationSeq();
 
-    void StartMusicSeq();
+    // Runs on m_playbackThread until the sequence ends or m_playing clears.
+    void PlaybackLoop();
 
+    // Reads one frame from the fseq and pushes it to every output.
+    void OutputFrame(uint32_t frame);
+
+    // Sends a frame of zeros so the props do not hold their last colour.
+    void Blackout();
+
+    // Releases outputs and audio. Called once, from the playback thread.
+    void Shutdown();
+
+    std::string m_showFolder;
     std::string m_seqFileName;
     std::string m_mediaFile;
     std::string m_mediaName;
     std::unique_ptr<FSEQFile> m_seqFile{nullptr};
-    //std::chrono::time_point<std::chrono::high_resolution_clock> m_seqMSElapsed;
-    int m_seqMSDuration{0};
-    //int m_seqMSElapsed{0};
-    //int m_seqMSRemaining{0};
-    int m_lastFrameRead{0};
-    int m_numberofFrame{0};
+    uint32_t m_seqMSDuration{0};
+    uint32_t m_numberofFrame{0};
 
     int m_seqStepTime{0};
-    //float m_seqRefreshRate{0};
-    uint64_t channelsCount{0};
-
-    //std::unique_ptr<QTimer> m_playbackTimer{nullptr};
-    //QThread m_playbackThread;
 
     SeqType m_seqType { SeqType::Animation };
 
     std::atomic_bool m_playing{ false };
+    std::thread m_playbackThread;
 
     // getFrame() hands back ownership, so this must not be a raw pointer:
     // overwriting it every frame leaked one FrameData per frame.
     std::unique_ptr<FSEQFile::FrameData> m_lastFrameData{nullptr};
 
-    //std::unique_ptr<QMediaPlayer> m_mediaPlayer{nullptr};
+    std::unique_ptr<AudioPlayer> m_audio{nullptr};
 
     std::unique_ptr<OutputManager> m_outputManager{nullptr};
 
