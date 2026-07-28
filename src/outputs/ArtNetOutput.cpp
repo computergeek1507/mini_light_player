@@ -50,7 +50,7 @@ bool ArtNetOutput::Open()
 
 void ArtNetOutput::OutputFrame(uint8_t* data)
 {
-    if (!Enabled || m_UdpSocket == nullptr ) return;
+    if (!Enabled || !IsOpen()) return;
 
     size_t const chs = PacketSize;
     memcpy(&_data[ARTNET_PACKET_HEADERLEN], &data[StartChannel - 1], chs);

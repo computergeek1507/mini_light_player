@@ -108,12 +108,12 @@ bool E131Output::Open()
     _data[115] = hi + 0x70;  // DMP Protocol flags and length (high)
     _data[116] = lo;  // 0x20b = E131_PACKET_LEN - 115
 
-    return m_UdpSocket != nullptr;
+    return true;
 }
 
 void E131Output::OutputFrame(uint8_t* data)
 {
-    if (!Enabled || m_UdpSocket == nullptr ) return;
+    if (!Enabled || !IsOpen()) return;
 
     size_t const chs = PacketSize;
     memcpy(&_data[E131_PACKET_HEADERLEN], &data[StartChannel - 1], chs);
