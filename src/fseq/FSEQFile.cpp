@@ -68,40 +68,39 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp)
 #define PLATFORM_UNKNOWN
 #include "spdlog/spdlog.h"
 #include "spdlog/fmt/bundled/printf.h"
-template<typename... Args> static void LogErr(int i, const char *fmt, Args... args) {
-    auto fseq_logger_base = spdlog::get("scottplayer");
-    char buf[256];
-    const char *nfmt = fmt;
-    if (fmt[strlen(fmt) - 1] == '\n') {
-        strcpy(buf, fmt);
-        buf[strlen(fmt) - 1] = 0;
-        nfmt = buf;
+// The logger is registered as "miniplayer". Looking up a name that was never
+// registered returns null, and these helpers used to dereference it blindly,
+// so the first log line inside a file handler crashed the player.
+#define FSEQ_LOGGER_NAME "miniplayer"
+
+// Trailing newlines come from the FPP printf style call sites; spdlog adds its own.
+static const char *TrimNewline(const char *fmt, char *buf, size_t bufLen) {
+    size_t const len = strlen(fmt);
+    if (len == 0 || fmt[len - 1] != '\n' || len >= bufLen) {
+        return fmt;
     }
-    //logger->log(loc, level, "{}", fmt::sprintf(fmt, args...));
-    fseq_logger_base->error(fmt::sprintf(nfmt, args...));
-    //fseq_logger_base->error(fmt, args...);
+    memcpy(buf, fmt, len - 1);
+    buf[len - 1] = 0;
+    return buf;
+}
+
+template<typename... Args> static void LogErr(int i, const char *fmt, Args... args) {
+    auto fseq_logger_base = spdlog::get(FSEQ_LOGGER_NAME);
+    if (!fseq_logger_base) return;
+    char buf[256];
+    fseq_logger_base->error(fmt::sprintf(TrimNewline(fmt, buf, sizeof(buf)), args...));
 }
 template<typename... Args> static void LogInfo(int i, const char *fmt, Args... args) {
-    auto fseq_logger_base = spdlog::get("scottplayer");
+    auto fseq_logger_base = spdlog::get(FSEQ_LOGGER_NAME);
+    if (!fseq_logger_base) return;
     char buf[256];
-    const char *nfmt = fmt;
-    if (fmt[strlen(fmt) - 1] == '\n') {
-        strcpy(buf, fmt);
-        buf[strlen(fmt) - 1] = 0;
-        nfmt = buf;
-    }
-    fseq_logger_base->info(fmt::sprintf(nfmt, args...));
+    fseq_logger_base->info(fmt::sprintf(TrimNewline(fmt, buf, sizeof(buf)), args...));
 }
 template<typename... Args> static void LogDebug(int i, const char *fmt, Args... args) {
-    auto fseq_logger_base = spdlog::get("scottplayer");
+    auto fseq_logger_base = spdlog::get(FSEQ_LOGGER_NAME);
+    if (!fseq_logger_base) return;
     char buf[256];
-    const char *nfmt = fmt;
-    if (fmt[strlen(fmt) - 1] == '\n') {
-        strcpy(buf, fmt);
-        buf[strlen(fmt) - 1] = 0;
-        nfmt = buf;
-    }
-    fseq_logger_base->debug(fmt::sprintf(nfmt, args...));
+    fseq_logger_base->debug(fmt::sprintf(TrimNewline(fmt, buf, sizeof(buf)), args...));
 }
 #define VB_SEQUENCE 1
 #define VB_ALL 0

@@ -5,10 +5,20 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <filesystem>
 #include <thread>
 #include <utility>
+
+namespace
+{
+	// Set from the signal handler, so only an atomic flag is touched there.
+	std::atomic_bool g_stopRequested{ false };
+
+	void HandleSignal(int) { g_stopRequested = true; }
+}
 
 MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolder))
 {
@@ -95,8 +105,20 @@ void MiniPlayer::Play(std::string const& sequence, std::string const& media)
 
 void MiniPlayer::Run()
 {
-	while (m_player->IsPlaying())
+	// Ctrl+C must still reach the blackout, otherwise the props stay lit on
+	// whatever frame they happened to be showing.
+	std::signal(SIGINT, HandleSignal);
+	std::signal(SIGTERM, HandleSignal);
+
+	while (m_player->IsPlaying() && !g_stopRequested)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
+
+	if (g_stopRequested)
+	{
+		m_logger->info("Stop requested");
+	}
+
+	m_player->StopSequence();
 }
