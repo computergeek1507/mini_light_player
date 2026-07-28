@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
 		if (argc >= 3)
 		{
-			player.Play(argv[2], argc >= 4 ? argv[3] : std::string());
+			player.PlayOnce(argv[2], argc >= 4 ? argv[3] : std::string());
 		}
 
 		player.Run();
