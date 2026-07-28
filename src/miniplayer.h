@@ -26,6 +26,9 @@ public:
     // Runs until the sequence ends, or forever following the schedule.
     void Run();
 
+    // Acts as an FPP multisync master, driving remote players.
+    void SetMultisync(bool enabled) { m_player->SetMultisync(enabled); }
+
 private:
     // Resolves a possibly-relative name against the show folder, searching the
     // usual xLights subdirectories.

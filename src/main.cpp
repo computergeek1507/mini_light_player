@@ -2,35 +2,68 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace
 {
 	void PrintUsage(char const* exe)
 	{
 		printf("mini_light_player - fseq show player\n\n");
-		printf("Usage: %s <show_folder> [sequence.fseq] [media_file]\n\n", exe);
+		printf("Usage: %s <show_folder> [sequence.fseq] [media_file] [--multisync]\n\n", exe);
 		printf("  show_folder   xLights show directory holding xlights_networks.xml\n");
 		printf("  sequence.fseq optional sequence to play immediately; may be a path\n");
-		printf("                or a name relative to the show folder\n");
+		printf("                or a name relative to the show folder. Without it the\n");
+		printf("                player follows the schedules in scottplayer.json\n");
 		printf("  media_file    optional audio file overriding the one named in the fseq\n");
+		printf("  --multisync   act as an FPP multisync master\n");
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2)
+	char const* const exe = argc > 0 ? argv[0] : "mini_light_player";
+
+	bool multisync{ false };
+	std::vector<std::string> positional;
+
+	for (int i = 1; i < argc; ++i)
 	{
-		PrintUsage(argc > 0 ? argv[0] : "mini_light_player");
+		std::string const arg = argv[i];
+		if (arg == "--multisync")
+		{
+			multisync = true;
+		}
+		else if (arg == "--help" || arg == "-h")
+		{
+			PrintUsage(exe);
+			return 0;
+		}
+		else if (arg.rfind("--", 0) == 0)
+		{
+			printf("Unknown option: %s\n\n", arg.c_str());
+			PrintUsage(exe);
+			return 1;
+		}
+		else
+		{
+			positional.push_back(arg);
+		}
+	}
+
+	if (positional.empty())
+	{
+		PrintUsage(exe);
 		return 1;
 	}
 
 	try
 	{
-		MiniPlayer player(argv[1]);
+		MiniPlayer player(positional[0]);
+		player.SetMultisync(multisync);
 
-		if (argc >= 3)
+		if (positional.size() >= 2)
 		{
-			player.PlayOnce(argv[2], argc >= 4 ? argv[3] : std::string());
+			player.PlayOnce(positional[1], positional.size() >= 3 ? positional[2] : std::string());
 		}
 
 		player.Run();

@@ -20,7 +20,7 @@ bool DDPOutput::Open()
 
 void DDPOutput::OutputFrame(uint8_t* data)
 {
-    if (!Enabled || m_UdpSocket == nullptr) return;
+    if (!Enabled || !IsOpen()) return;
 
     int32_t index = StartChannel - 1;
     int32_t chan = KeepChannels ? (StartChannel - 1) : 0;

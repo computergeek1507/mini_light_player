@@ -1,9 +1,11 @@
 #ifndef SYNCMANAGER_H
 #define SYNCMANAGER_H
 
+#include "UdpSender.h"
+
 #include "spdlog/spdlog.h"
 
-
+#include <cstdint>
 #include <string>
 
 #include <memory>
@@ -32,14 +34,14 @@ public:
 private:
 	void SendFPPSync(const std::string& item, uint32_t stepMS, uint32_t frames);
 
-	bool m_enabled{ true };
+	// Off by default: a player that is not driving remote FPP instances should
+	// not be putting sync traffic on the network.
+	bool m_enabled{ false };
 	std::string m_lastFseq;
 	std::string m_lastMedia;
-	size_t m_lastFrame{ 0 };
-	size_t m_lastMediaMsec{ 0 };
-	//QStringList m_unicast;
-	//QHostAddress m_groupAddress;
-	//std::unique_ptr<QUdpSocket> m_UdpSocket{ nullptr };
+	uint32_t m_lastFrame{ 0 };
+	uint32_t m_lastMediaMsec{ 0 };
+	UdpSender m_sender;
 	std::shared_ptr<spdlog::logger> m_logger{ nullptr };
 };
 
