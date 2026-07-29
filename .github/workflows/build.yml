@@ -31,8 +31,19 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
+      # Compiler output only lives in the run log, which needs repo admin to
+      # download. Echoing the first errors as ::error:: makes them visible as
+      # annotations on the run itself.
       - name: Build
-        run: cmake --build build --config Release --target mini_light_player
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! cmake --build build --config Release --target mini_light_player 2>&1 | tee build.log; then
+            grep -E "error C[0-9]+|error:|fatal error" build.log | head -15 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+            exit 1
+          fi
 
       # --help exits 0 before any show folder, socket or audio device is touched,
       # so it proves the binary links and starts without needing hardware.
@@ -71,8 +82,25 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
+      # As above: surface compiler errors as annotations, since the raw log is
+      # only downloadable by repo admins.
       - name: Build
-        run: cmake --build build --target mini_light_player -j"$(nproc)"
+        run: |
+          set -o pipefail
+          if ! cmake --build build --target mini_light_player -j"$(nproc)" 2>&1 | tee build.log; then
+            grep -E "error:|fatal error" build.log | head -15 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+            exit 1
+          fi
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Smoke test
         run: ./build/mini_light_player --help

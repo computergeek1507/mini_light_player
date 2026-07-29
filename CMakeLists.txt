@@ -24,7 +24,9 @@ include(cmake/CPM.cmake)
 find_package(Threads REQUIRED)
 
 CPMAddPackage("gh:nlohmann/json@3.10.5")
-CPMAddPackage("gh:gabime/spdlog@1.11.0")
+# 1.11.0 bundles fmt 9.1.0, which does not compile on gcc 13 (fmt dropped a
+# transitive <cstdint>). 1.15.x bundles fmt 11 and builds on current toolchains.
+CPMAddPackage("gh:gabime/spdlog@1.15.3")
 CPMAddPackage("gh:chriskohlhoff/asio#asio-1-28-0@1.28.0")
 CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
 # Pin a tag: tracking master silently changed the socket API mid-project.

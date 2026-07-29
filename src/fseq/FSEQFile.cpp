@@ -1638,7 +1638,9 @@ void V2FSEQFile::dumpInfo(bool indent) {
     }
 
     LogDebug(VB_SEQUENCE, "%sSequence File Information\n", ind);
-    LogDebug(VB_SEQUENCE, "%scompressionType       : %d\n", ind, m_compressionType);
+    // fmt 10 and newer refuse to format a scoped-ish enum implicitly, and this
+    // is a %d anyway, so make the conversion explicit.
+    LogDebug(VB_SEQUENCE, "%scompressionType       : %d\n", ind, (int)m_compressionType);
     LogDebug(VB_SEQUENCE, "%snumBlocks             : %d\n", ind, m_handler->computeMaxBlocks());
     // Commented out to declutter the logs ... we can add it back in if we start seeing issues
     //for (auto &a : m_frameOffsets) {
