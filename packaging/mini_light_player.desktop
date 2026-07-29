@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=mini_light_player
+GenericName=FSEQ Show Player
+Comment=Plays xLights fseq sequences to E1.31, Art-Net and DDP controllers
+Exec=mini_light_player
+Icon=mini_light_player
+Terminal=true
+Categories=AudioVideo;Player;
+Keywords=fseq;xlights;dmx;e131;artnet;ddp;

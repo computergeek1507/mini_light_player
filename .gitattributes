@@ -1,0 +1,10 @@
+# CRLF inside a workflow run: block makes bash fail with $'\r': command not
+# found, and a .desktop file with CRLF is rejected by desktop-file-validate.
+# Pin these to LF regardless of the committer's core.autocrlf setting.
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sh        text eol=lf
+*.desktop   text eol=lf
+
+*.png       binary
+*.fseq      binary

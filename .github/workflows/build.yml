@@ -1,0 +1,145 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # CPM downloads every dependency at configure time; caching the sources keeps
+  # a rebuild from re-cloning spdlog, asio, zstd and friends on every run.
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+jobs:
+  windows:
+    name: windows x64 (exe)
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache CPM sources
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-windows-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: cpm-windows-
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target mini_light_player
+
+      # --help exits 0 before any show folder, socket or audio device is touched,
+      # so it proves the binary links and starts without needing hardware.
+      - name: Smoke test
+        run: |
+          ./build/Release/mini_light_player.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "player did not start cleanly" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mini_light_player-windows-x64
+          path: build/Release/mini_light_player.exe
+          if-no-files-found: error
+
+  linux:
+    name: linux x86_64 (AppImage)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache CPM sources
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-linux-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: cpm-linux-
+
+      # miniaudio dlopen()s ALSA/PulseAudio at runtime, so nothing audio related
+      # is needed to build. Only the FUSE runtime for AppImage tooling.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends file desktop-file-utils
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --target mini_light_player -j"$(nproc)"
+
+      - name: Smoke test
+        run: ./build/mini_light_player --help
+
+      - name: Build AppImage
+        run: |
+          set -euo pipefail
+
+          mkdir -p AppDir/usr/bin
+          cp build/mini_light_player AppDir/usr/bin/
+
+          curl -fsSL -o linuxdeploy \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy
+
+          # GitHub runners have no FUSE, so the tools must unpack themselves.
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export OUTPUT=mini_light_player-x86_64.AppImage
+
+          ./linuxdeploy \
+            --appdir AppDir \
+            --executable build/mini_light_player \
+            --desktop-file packaging/mini_light_player.desktop \
+            --icon-file packaging/mini_light_player.png \
+            --output appimage
+
+          chmod +x "$OUTPUT"
+
+      - name: Verify AppImage runs
+        run: |
+          set -euo pipefail
+          # Same self-extract path, since the runner still has no FUSE.
+          ./mini_light_player-x86_64.AppImage --appimage-extract >/dev/null
+          ./squashfs-root/AppRun --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mini_light_player-linux-x86_64
+          path: mini_light_player-x86_64.AppImage
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: [windows, linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp artifacts/mini_light_player-windows-x64/mini_light_player.exe \
+             dist/mini_light_player-windows-x64.exe
+          cp artifacts/mini_light_player-linux-x86_64/mini_light_player-x86_64.AppImage \
+             dist/mini_light_player-linux-x86_64.AppImage
+
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*
