@@ -1,6 +1,7 @@
 #include "miniplayer.h"
 
 #include <cstdio>
+#include <exception>
 #include <string>
 #include <vector>
 

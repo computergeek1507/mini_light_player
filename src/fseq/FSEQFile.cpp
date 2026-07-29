@@ -106,7 +106,9 @@ template<typename... Args> static void LogDebug(int i, const char *fmt, Args... 
 #define VB_ALL 0
 #endif
 
-#include "../../zstd-src/lib/zstd.h"
+// Resolved through the include directory on the ZSTD::zstd target. The old
+// "../../zstd-src/lib/zstd.h" only worked by accident of the build layout.
+#include <zstd.h>
 
 using FrameData = FSEQFile::FrameData;
 

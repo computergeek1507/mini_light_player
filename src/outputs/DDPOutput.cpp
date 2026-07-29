@@ -1,5 +1,7 @@
 #include "DDPOutput.h"
 
+#include <cstring>
+
 DDPOutput::DDPOutput()
 {
 	memset(_data, 0, sizeof(_data));

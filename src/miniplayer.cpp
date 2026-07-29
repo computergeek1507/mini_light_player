@@ -9,6 +9,7 @@
 #include <chrono>
 #include <csignal>
 #include <filesystem>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 

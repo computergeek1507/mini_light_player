@@ -1,5 +1,7 @@
 #include "E131Output.h"
 
+#include <cctype>
+#include <cstring>
 #include <string>
 #include <memory>
     #include <algorithm>

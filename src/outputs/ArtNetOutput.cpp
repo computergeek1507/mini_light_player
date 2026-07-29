@@ -2,6 +2,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include <cstring>
 #include <memory>
 
 ArtNetOutput::ArtNetOutput()

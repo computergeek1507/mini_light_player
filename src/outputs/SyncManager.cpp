@@ -3,6 +3,8 @@
 
 #include "SyncPacket.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <vector>

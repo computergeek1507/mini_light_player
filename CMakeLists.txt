@@ -94,7 +94,13 @@ if(asio_ADDED)
   endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2 MinimalSocket)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog nlohmann_json::nlohmann_json asio tinyxml2::tinyxml2 MinimalSocket Threads::Threads)
+
+# miniaudio dlopen()s ALSA/PulseAudio at runtime, so no audio dev packages are
+# needed to build, but it does need libdl and libm.
+if(UNIX AND NOT APPLE)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS} m)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ZLIB::zlibstatic)
 target_link_libraries(${PROJECT_NAME} PUBLIC ZSTD::zstd)
