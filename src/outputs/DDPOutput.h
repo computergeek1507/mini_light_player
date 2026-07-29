@@ -4,6 +4,7 @@
 #include "IPOutput.h"
 
 
+#include <cstdint>
 #include <memory>
 
 #define DDP_PACKET_HEADERLEN 10

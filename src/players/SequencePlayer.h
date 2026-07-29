@@ -10,6 +10,7 @@
 #include "spdlog/spdlog.h"
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <chrono>
 #include <string>

@@ -3,6 +3,7 @@
 
 #include "IPOutput.h"
 
+#include <cstdint>
 #include <memory>
 
 #define ARTNET_PACKET_HEADERLEN 18

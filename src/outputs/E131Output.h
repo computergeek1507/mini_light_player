@@ -3,6 +3,7 @@
 
 #include "IPOutput.h"
 
+#include <cstdint>
 #include <memory>
 
 #define E131_PACKET_HEADERLEN 126
