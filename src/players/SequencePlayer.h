@@ -58,6 +58,21 @@ public:
 
     [[nodiscard]] uint32_t GetDurationMS() const { return m_seqMSDuration; }
     [[nodiscard]] std::string const& GetSequenceName() const { return m_seqFileName; }
+    [[nodiscard]] std::string const& GetMediaName() const { return m_mediaName; }
+    [[nodiscard]] bool IsMusic() const { return m_seqType == SeqType::Music; }
+
+    // For a live status display: how far into the sequence playback is right
+    // now, independent of whether it is animation- or audio-clocked.
+    [[nodiscard]] uint32_t GetCurrentFrame() const { return m_currentFrame; }
+    [[nodiscard]] uint32_t GetTotalFrames() const { return m_numberofFrame; }
+    [[nodiscard]] int GetStepTimeMS() const { return m_seqStepTime; }
+
+    // Wall-clock time PlaySequence() started, for showing real start/end
+    // times rather than only an elapsed/total counter.
+    [[nodiscard]] std::chrono::system_clock::time_point GetStartedAt() const { return m_startedAt; }
+
+    [[nodiscard]] uint64_t GetChannelCount() const { return m_outputManager ? m_outputManager->getChannelCount() : 0; }
+    [[nodiscard]] size_t GetOutputCount() const { return m_outputManager ? m_outputManager->GetOutputCount() : 0; }
 
 private:
     void PlaySequence();
@@ -88,6 +103,8 @@ private:
     SeqType m_seqType { SeqType::Animation };
 
     std::atomic_bool m_playing{ false };
+    std::atomic<uint32_t> m_currentFrame{ 0 };
+    std::chrono::system_clock::time_point m_startedAt{};
     std::thread m_playbackThread;
 
     // getFrame() hands back ownership, so this must not be a raw pointer:

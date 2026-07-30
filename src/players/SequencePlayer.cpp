@@ -112,6 +112,8 @@ void SequencePlayer::PlaySequence()
 		m_seqFileName, m_numberofFrame, m_seqStepTime, m_seqMSDuration / 1000);
 
 	m_playing = true;
+	m_currentFrame = 0;
+	m_startedAt = std::chrono::system_clock::now();
 	m_playbackThread = std::thread(&SequencePlayer::PlaybackLoop, this);
 }
 
@@ -186,6 +188,8 @@ void SequencePlayer::PlaybackLoop()
 
 void SequencePlayer::OutputFrame(uint32_t frame)
 {
+	m_currentFrame = frame;
+
 	m_lastFrameData.reset(m_seqFile->getFrame(frame));
 	if (m_lastFrameData == nullptr)
 	{

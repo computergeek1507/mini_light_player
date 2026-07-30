@@ -10,6 +10,7 @@ A small, headless player for [xLights](https://xlights.org/) `.fseq` sequence fi
 - Plays **musical sequences** (`.fseq` + audio) with the light data locked to the audio playback position, and **animation sequences** (`.fseq` alone) on a steady wall-clock timer.
 - Reads and writes `mini_light_player.json` playlists and day/time schedules, so the player can run unattended and pick up a show automatically at the scheduled time. `scottplayer.json`, the name the original Qt player used, is also recognized for shows that already have one.
 - Can act as an **FPP multisync** master, broadcasting start/sync/stop packets to remote FPP players on the network.
+- Optional live terminal dashboard (`--tui`, in builds compiled with `-DMINIPLAYER_ENABLE_TUI=ON`) showing what's playing, progress, the active schedule and a log tail.
 - Sends a blackout frame and handles Ctrl+C cleanly, so stopping the player doesn't leave props stuck lit on the last frame shown.
 
 ## Usage
@@ -22,6 +23,7 @@ mini_light_player <show_folder> [sequence.fseq] [media_file] [--multisync]
 - `sequence.fseq` — play this sequence once and exit. May be an absolute path or just a file name, in which case the show folder is searched for it. Omit this to instead follow the schedules in `mini_light_player.json`/`scottplayer.json` until interrupted.
 - `media_file` — override the audio file named inside the `.fseq`.
 - `--multisync` — act as an FPP multisync master, sending start/sync/stop packets to `239.70.80.80:32320` for remote FPP players to follow. Off by default.
+- `--tui` — show a live status dashboard (current sequence and progress, active schedule, log tail) instead of plain log lines. Only available in builds compiled with `-DMINIPLAYER_ENABLE_TUI=ON` (see [Building](#building)); a build without it logs a warning and falls back to plain output.
 
 ```
 # Play one sequence and exit
@@ -50,6 +52,17 @@ cmake --build build --config Release
 ```
 
 (`VS2022.bat` does the same, generating into `cmake_vs/`.)
+
+### Optional terminal dashboard (`--tui`)
+
+Off by default - a headless box has no use for it, and it needs a real attached terminal. To build it in:
+
+```
+cmake -S . -B build -DMINIPLAYER_ENABLE_TUI=ON
+cmake --build build --config Release
+```
+
+This fetches [FTXUI](https://github.com/ArthurSonzogni/FTXUI) (MIT licensed, no other dependencies) and enables `--tui`. Windows terminal support is community-contributed rather than a first-class target of that library, so if the dashboard misbehaves on Windows, plain output (the default) is the reliable fallback.
 
 ## Prebuilt binaries
 

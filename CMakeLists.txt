@@ -4,6 +4,11 @@ project(mini_light_player VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+# Off by default: a headless box (e.g. a Pi run under systemd) has no use for
+# a terminal dashboard, and FTXUI needs a real attached console/terminal to
+# do anything useful, unlike every other dependency this project pulls in.
+option(MINIPLAYER_ENABLE_TUI "Build with an optional FTXUI terminal dashboard (--tui)" OFF)
+
 add_compile_definitions(NO_ZLIB)
 
 include(FetchContent)
@@ -31,6 +36,10 @@ CPMAddPackage("gh:chriskohlhoff/asio#asio-1-28-0@1.28.0")
 CPMAddPackage("gh:leethomason/tinyxml2#e05956094c27117f989d22f25b75633123d72a83")
 # Pin a tag: tracking master silently changed the socket API mid-project.
 CPMAddPackage("gh:andreacasalino/Minimal-Socket#v.3.1")
+
+if(MINIPLAYER_ENABLE_TUI)
+  CPMAddPackage("gh:ArthurSonzogni/FTXUI@7.0.1")
+endif()
 
 cpmaddpackage(
   NAME
@@ -106,6 +115,11 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ZLIB::zlibstatic)
 target_link_libraries(${PROJECT_NAME} PUBLIC ZSTD::zstd)
+
+if(MINIPLAYER_ENABLE_TUI)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ftxui::screen ftxui::dom ftxui::component)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE MINIPLAYER_ENABLE_TUI)
+endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

@@ -414,13 +414,8 @@ std::vector<std::string> PlayListManager::GetPlayLists() const
 	return playLists;
 }
 
-void PlayListManager::CheckSchedule()
+std::optional<std::reference_wrapper<Schedule const>> PlayListManager::GetActiveSchedule() const
 {
-	if (m_status != PlaybackStatus::Stopped)
-	{
-		return;
-	}
-
 	std::tm const local = LocalTimeNow();
 
 	auto const today = std::chrono::year{ local.tm_year + 1900 } /
@@ -435,13 +430,27 @@ void PlayListManager::CheckSchedule()
 
 	for (auto const& schedule : m_schedules)
 	{
-		if (!schedule.Enabled ||
-			!schedule.CoversDate(today) ||
-			!schedule.CoversTime(std::chrono::duration_cast<std::chrono::milliseconds>(timeOfDay)) ||
-			!schedule.CoversDay(dayName))
+		if (schedule.Enabled &&
+			schedule.CoversDate(today) &&
+			schedule.CoversTime(std::chrono::duration_cast<std::chrono::milliseconds>(timeOfDay)) &&
+			schedule.CoversDay(dayName))
 		{
-			continue;
+			return schedule;
 		}
+	}
+	return std::nullopt;
+}
+
+void PlayListManager::CheckSchedule()
+{
+	if (m_status != PlaybackStatus::Stopped)
+	{
+		return;
+	}
+
+	if (auto const match = GetActiveSchedule(); match)
+	{
+		Schedule const& schedule = match->get();
 
 		// Already inside this playlist, so just roll on to its next sequence.
 		if (schedule.PlayListName == m_currentPlaylist)

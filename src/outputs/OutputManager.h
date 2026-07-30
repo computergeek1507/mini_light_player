@@ -21,6 +21,7 @@ public:
     void CloseOutputs();
     void OutputData(uint8_t* data);
     uint64_t getChannelCount()const{ return m_channelCount;}
+    [[nodiscard]] size_t GetOutputCount() const { return m_outputs.size(); }
 
 private:
     std::vector<std::unique_ptr<BaseOutput>> m_outputs;

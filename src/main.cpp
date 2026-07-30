@@ -10,7 +10,7 @@ namespace
 	void PrintUsage(char const* exe)
 	{
 		printf("mini_light_player - fseq show player\n\n");
-		printf("Usage: %s <show_folder> [sequence.fseq] [media_file] [--multisync]\n\n", exe);
+		printf("Usage: %s <show_folder> [sequence.fseq] [media_file] [--multisync] [--tui]\n\n", exe);
 		printf("  show_folder   xLights show directory holding xlights_networks.xml\n");
 		printf("  sequence.fseq optional sequence to play immediately; may be a path\n");
 		printf("                or a name relative to the show folder. Without it the\n");
@@ -18,6 +18,8 @@ namespace
 		printf("                (or scottplayer.json, for an existing show)\n");
 		printf("  media_file    optional audio file overriding the one named in the fseq\n");
 		printf("  --multisync   act as an FPP multisync master\n");
+		printf("  --tui         show a live terminal status dashboard instead of\n");
+		printf("                plain log lines (only in builds with TUI support)\n");
 	}
 }
 
@@ -26,6 +28,7 @@ int main(int argc, char *argv[])
 	char const* const exe = argc > 0 ? argv[0] : "mini_light_player";
 
 	bool multisync{ false };
+	bool tui{ false };
 	std::vector<std::string> positional;
 
 	for (int i = 1; i < argc; ++i)
@@ -34,6 +37,10 @@ int main(int argc, char *argv[])
 		if (arg == "--multisync")
 		{
 			multisync = true;
+		}
+		else if (arg == "--tui")
+		{
+			tui = true;
 		}
 		else if (arg == "--help" || arg == "-h")
 		{
@@ -60,7 +67,7 @@ int main(int argc, char *argv[])
 
 	try
 	{
-		MiniPlayer player(positional[0]);
+		MiniPlayer player(positional[0], tui);
 		player.SetMultisync(multisync);
 
 		if (positional.size() >= 2)

@@ -32,6 +32,12 @@ public:
     [[nodiscard]] std::optional<std::reference_wrapper<PlayList const>> GetPlayList(std::string const& name) const;
     [[nodiscard]] std::vector<std::string> GetPlayLists() const;
     [[nodiscard]] std::vector<Schedule> const& GetSchedules() const { return m_schedules; };
+    [[nodiscard]] std::string const& GetCurrentPlaylistName() const { return m_currentPlaylist; }
+
+    // The schedule matching right now, if any - independent of whether a
+    // sequence happens to already be playing. Used for a live status display;
+    // CheckSchedule() has its own side-effecting version of this same match.
+    [[nodiscard]] std::optional<std::reference_wrapper<Schedule const>> GetActiveSchedule() const;
 
     void UpdateStatus(std::string const& sequencePath, PlaybackStatus status);
 

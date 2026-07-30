@@ -10,10 +10,16 @@
 #include <memory>
 #include <filesystem>
 
+#ifdef MINIPLAYER_ENABLE_TUI
+class RingBufferSink;
+#endif
+
 class MiniPlayer
 {
 public:
-    MiniPlayer(std::string showfolder);
+    // tuiMode is silently ignored (with a logged warning) in builds compiled
+    // without MINIPLAYER_ENABLE_TUI.
+    MiniPlayer(std::string showfolder, bool tuiMode = false);
     ~MiniPlayer();
 
     // Starts a sequence. sequence and media may be absolute paths or names
@@ -40,6 +46,13 @@ private:
     std::string m_appdir;
     std::string m_showfolder;
     bool m_oneShot{ false };
+    bool m_tuiMode{ false };
+
+#ifdef MINIPLAYER_ENABLE_TUI
+    // A full-screen dashboard can't share a terminal with plain log lines, so
+    // this sink stands in for the stdout sink while the dashboard is active.
+    std::shared_ptr<RingBufferSink> m_logSink{ nullptr };
+#endif
 
 };
 

@@ -5,6 +5,11 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+#ifdef MINIPLAYER_ENABLE_TUI
+#include "./tui/Dashboard.h"
+#include "./tui/RingBufferSink.h"
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -21,7 +26,8 @@ namespace
 	void HandleSignal(int) { g_stopRequested = true; }
 }
 
-MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolder))
+MiniPlayer::MiniPlayer(std::string showfolder, bool tuiMode)
+	: m_showfolder(std::move(showfolder)), m_tuiMode(tuiMode)
 {
 	auto const log_name{ "log.txt" };
 
@@ -29,7 +35,22 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 	{
 		auto file{ log_name };
 		std::vector<spdlog::sink_ptr> sinks;
-        sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+
+#ifdef MINIPLAYER_ENABLE_TUI
+		if (m_tuiMode)
+		{
+			// A full-screen interactive display can't share a terminal with
+			// plain stdout log lines, so keep only the file sink plus a small
+			// in-memory tail the dashboard can render instead.
+			m_logSink = std::make_shared<RingBufferSink>(200);
+			sinks.push_back(m_logSink);
+		}
+		else
+#endif
+		{
+			sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+		}
+
 		sinks.push_back(std::make_shared<spdlog::sinks::rotating_file_sink_mt>(file, 1024 * 1024, 5, false));
 
 		m_logger = std::make_shared<spdlog::logger>("miniplayer", sinks.begin(), sinks.end());
@@ -47,6 +68,14 @@ MiniPlayer::MiniPlayer(std::string showfolder): m_showfolder(std::move(showfolde
 	{
 		throw std::runtime_error("show folder not found: " + m_showfolder);
 	}
+
+#ifndef MINIPLAYER_ENABLE_TUI
+	if (m_tuiMode)
+	{
+		m_logger->warn("--tui was requested but this build was compiled without TUI support");
+		m_tuiMode = false;
+	}
+#endif
 
 	m_logger->info("Show folder: {}", m_showfolder);
 
@@ -131,6 +160,23 @@ void MiniPlayer::Run()
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 	}
+#ifdef MINIPLAYER_ENABLE_TUI
+	else if (m_tuiMode)
+	{
+		Dashboard dashboard(*m_player, *m_playlists, *m_logSink, m_showfolder);
+		dashboard.Run(
+			[] { return g_stopRequested.load(); },
+			[this]
+			{
+				m_playlists->ReloadIfChanged();
+				if (!m_player->IsPlaying())
+				{
+					m_playlists->UpdateStatus(std::string(), PlaybackStatus::Stopped);
+					m_playlists->CheckSchedule();
+				}
+			});
+	}
+#endif
 	else
 	{
 		m_logger->info("Watching for playlists/schedules in {}, Ctrl+C to stop", m_showfolder);

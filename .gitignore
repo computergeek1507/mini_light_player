@@ -33,6 +33,7 @@
 
 # Build directories
 build/
+build_tui/
 cmake_vs/
 log.txt
 src/config.h
