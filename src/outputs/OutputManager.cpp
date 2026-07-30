@@ -2,7 +2,9 @@
 
 #include "ArtNetOutput.h"
 #include "DDPOutput.h"
+#include "DMXOutput.h"
 #include "E131Output.h"
+#include "RenardOutput.h"
 
 #include "tinyxml2.h"
 
@@ -187,6 +189,35 @@ bool OutputManager::LoadOutputs(std::string const& outputConfig)
 					currentChannel += packetSize;
 					++currentUniverse;
 				}
+			}
+			else if ("DMX" == nType)
+			{
+				// COM7, not an IP - the port name comes through the same
+				// ComPort attribute xLights uses for both. Baud is fixed by
+				// the protocol itself (Enttec-style), not read from the XML.
+				auto dmx = std::make_unique<DMXOutput>();
+				dmx->IP = ipAddress;
+				dmx->StartChannel = startChannel;
+				dmx->Channels = iChannels;
+				dmx->Enabled = active;
+				m_outputs.push_back(std::move(dmx));
+
+				m_logger->debug("Adding Output '{}' type: {} port: {} channels: {}-{}",
+					name, nType, ipAddress, startChannel, startChannel + iChannels - 1);
+			}
+			else if ("Renard" == nType)
+			{
+				auto renard = std::make_unique<RenardOutput>();
+				renard->IP = ipAddress;
+				renard->BaudRate = static_cast<uint32_t>(AttrNumOr(networkXML, "BaudRate", renard->BaudRate));
+				renard->StartChannel = startChannel;
+				renard->Channels = iChannels;
+				renard->Enabled = active;
+				uint32_t const baudRate = renard->BaudRate; // read before the move below
+				m_outputs.push_back(std::move(renard));
+
+				m_logger->debug("Adding Output '{}' type: {} port: {} baud: {} channels: {}-{}",
+					name, nType, ipAddress, baudRate, startChannel, startChannel + iChannels - 1);
 			}
 			else
 			{
