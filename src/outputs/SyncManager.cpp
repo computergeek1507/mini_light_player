@@ -3,27 +3,26 @@
 
 #include "SyncPacket.h"
 
-#include <algorithm>
-#include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <vector>
 
-#define FPP_MEDIA_SYNC_INTERVAL_MS 500
-#define FPP_SEQ_SYNC_INTERVAL_FRAMES 16
+// Sync throttle intervals below and the Open-then-Start call pattern were
+// confirmed against FalconChristmas/fpp, not guessed:
+//  - src/MultiSync.cpp: SendSeqSyncPacket sends every 4 frames for the first
+//    32 frames of a sequence, then every 10 frames after that. Real FPP does
+//    not throttle a media Sync packet by frame count at all - it compares
+//    (int)(seconds * 2.0f) to the last value sent, i.e. a half-second bucket.
+//  - src/Sequence.cpp: OpenSequenceFile() calls SendSeqOpenPacket() and
+//    StartSequence() separately calls SendSeqSyncStartPacket() - two distinct
+//    packets, not one. Both call sites pass a bare filename (m_seqFilename),
+//    confirming FPP itself only ever sends a basename, never the master's
+//    path to the file.
+//  - docs/ControlProtocol.txt / src/MultiSync.h: the ControlPkt/SyncPkt wire
+//    layout below already matched this project's structs exactly.
+#define FPP_SEQ_SYNC_INTERVAL_FRAMES 10
 #define FPP_SEQ_SYNC_INTERVAL_INITIAL_FRAMES 4
 #define FPP_SEQ_SYNC_INITIAL_NUMBER_OF_FRAMES 32
-
-namespace
-{
-	bool IsSequenceFile(std::string const& path)
-	{
-		std::string ext = std::filesystem::path(path).extension().string();
-		std::transform(ext.begin(), ext.end(), ext.begin(),
-			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-		return ext == ".fseq";
-	}
-}
 
 SyncManager::SyncManager() :
 	m_logger(spdlog::get("miniplayer"))
@@ -59,117 +58,60 @@ void SyncManager::CloseOutputs()
 	m_sender.Close();
 	m_lastFseq.clear();
 	m_lastMedia.clear();
-	m_lastFrame = 0;
-	m_lastMediaMsec = 0;
+	m_lastSyncedFrame = 0;
+	m_lastMediaHalfSecond = 0;
 }
 
 void SyncManager::SendSync(uint32_t frameSizeMS, uint32_t frame, std::string const& fseq, std::string const& media)
 {
-	if (!m_enabled || !m_sender.IsOpen())
+	if (!m_enabled || !m_sender.IsOpen() || fseq.empty())
 	{
 		return;
 	}
 
-	// An empty name means "stop whatever the remotes are currently running".
-	if (fseq.empty())
+	if (m_lastFseq != fseq)
 	{
 		if (!m_lastFseq.empty())
 		{
-			SendFPPSync(m_lastFseq, 0xFFFFFFFF, 0);
-		}
-		if (!m_lastMedia.empty())
-		{
-			SendFPPSync(m_lastMedia, 0xFFFFFFFF, 0);
+			SendSeqSyncStopPacket(m_lastFseq);
 		}
 
-		m_lastFseq.clear();
-		m_lastMedia.clear();
-		m_lastFrame = 0;
-		m_lastMediaMsec = 0;
+		m_lastFseq = fseq;
+		m_lastSyncedFrame = 0;
+
+		// FPP sends these as two distinct packets when a file begins - Open
+		// first (remotes can start preparing the file), then Start.
+		SendSeqOpenPacket(fseq);
+		SendSeqSyncStartPacket(fseq);
+	}
+
+	if (!media.empty() && m_lastMedia != media)
+	{
+		if (!m_lastMedia.empty())
+		{
+			SendMediaSyncStopPacket(m_lastMedia);
+		}
+
+		m_lastMedia = media;
+		m_lastMediaHalfSecond = 0;
+
+		SendMediaOpenPacket(media);
+		SendMediaSyncStartPacket(media);
+	}
+
+	if (frame == 0)
+	{
+		// Start already reports frame 0 / 0 seconds, so there is nothing left
+		// to say at this exact point.
 		return;
 	}
 
-	bool dosendFSEQ{ false };
-	bool dosendMedia{ false };
+	float const secondsElapsed = (frame * frameSizeMS) / 1000.0f;
 
-	if (frame == 0 || frame == 0xFFFFFFFF)
-	{
-		dosendFSEQ = true;
-		dosendMedia = true;
-	}
-
-	if (IsSequenceFile(fseq))
-	{
-		if (m_lastFseq != fseq)
-		{
-			if (!m_lastFseq.empty())
-			{
-				SendFPPSync(m_lastFseq, 0xFFFFFFFF, frame);
-			}
-
-			m_lastFseq = fseq;
-
-			// Tell the remotes to open the new file before syncing into it.
-			if (frame != 0)
-			{
-				SendFPPSync(fseq, 0, frame);
-			}
-		}
-
-		if (!dosendFSEQ)
-		{
-			// Sync more often over the first frames, while the remotes are
-			// still settling onto the master's position.
-			uint32_t const interval = (frame <= FPP_SEQ_SYNC_INITIAL_NUMBER_OF_FRAMES)
-				? FPP_SEQ_SYNC_INTERVAL_INITIAL_FRAMES
-				: FPP_SEQ_SYNC_INTERVAL_FRAMES;
-
-			if (frame - m_lastFrame >= interval)
-			{
-				dosendFSEQ = true;
-			}
-		}
-	}
-
+	SendSeqSyncPacket(fseq, frame, secondsElapsed);
 	if (!media.empty())
 	{
-		if (m_lastMedia != media)
-		{
-			if (!m_lastMedia.empty())
-			{
-				SendFPPSync(m_lastMedia, 0xFFFFFFFF, frame);
-			}
-
-			m_lastMedia = media;
-
-			// Only pre-open when joining mid file. At frame 0 the START below
-			// covers it, and sending both duplicates the packet.
-			if (frame != 0)
-			{
-				SendFPPSync(media, 0, frame);
-			}
-		}
-
-		if (!dosendMedia)
-		{
-			uint32_t const stepMS = frame * frameSizeMS;
-			if (stepMS - m_lastMediaMsec >= FPP_MEDIA_SYNC_INTERVAL_MS)
-			{
-				dosendMedia = true;
-			}
-		}
-	}
-
-	uint32_t const stepMS = frame * frameSizeMS;
-	if (dosendFSEQ)
-	{
-		SendFPPSync(fseq, stepMS, frame);
-		m_lastFrame = frame;
-	}
-	if (dosendMedia && !media.empty())
-	{
-		SendFPPSync(media, stepMS, frame);
-		m_lastMediaMsec = stepMS;
+		SendMediaSyncPacket(media, secondsElapsed);
 	}
 }
 
@@ -179,56 +121,115 @@ void SyncManager::SendStop()
 	{
 		return;
 	}
-	SendSync(0, 0xFFFFFFFF, std::string(), std::string());
+
+	if (!m_lastFseq.empty())
+	{
+		SendSeqSyncStopPacket(m_lastFseq);
+	}
+	if (!m_lastMedia.empty())
+	{
+		SendMediaSyncStopPacket(m_lastMedia);
+	}
+
+	m_lastFseq.clear();
+	m_lastMedia.clear();
+	m_lastSyncedFrame = 0;
+	m_lastMediaHalfSecond = 0;
 }
 
-void SyncManager::SendFPPSync(const std::string& item, uint32_t stepMS, uint32_t frames)
+void SyncManager::SendSeqOpenPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_OPEN, SYNC_FILE_SEQ, 0, 0.0f);
+}
+
+void SyncManager::SendSeqSyncStartPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_START, SYNC_FILE_SEQ, 0, 0.0f);
+}
+
+void SyncManager::SendSeqSyncStopPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_STOP, SYNC_FILE_SEQ, 0, 0.0f);
+}
+
+void SyncManager::SendSeqSyncPacket(std::string const& filename, uint32_t frame, float secondsElapsed)
+{
+	uint32_t const diff = frame - m_lastSyncedFrame;
+	if (frame > FPP_SEQ_SYNC_INITIAL_NUMBER_OF_FRAMES)
+	{
+		if (diff < FPP_SEQ_SYNC_INTERVAL_FRAMES)
+		{
+			return;
+		}
+	}
+	else if (frame && diff < FPP_SEQ_SYNC_INTERVAL_INITIAL_FRAMES)
+	{
+		return;
+	}
+
+	SendPacket(filename, SYNC_PKT_SYNC, SYNC_FILE_SEQ, frame, secondsElapsed);
+	m_lastSyncedFrame = frame;
+}
+
+void SyncManager::SendMediaOpenPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_OPEN, SYNC_FILE_MEDIA, 0, 0.0f);
+}
+
+void SyncManager::SendMediaSyncStartPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_START, SYNC_FILE_MEDIA, 0, 0.0f);
+}
+
+void SyncManager::SendMediaSyncStopPacket(std::string const& filename)
+{
+	SendPacket(filename, SYNC_PKT_STOP, SYNC_FILE_MEDIA, 0, 0.0f);
+}
+
+void SyncManager::SendMediaSyncPacket(std::string const& filename, float secondsElapsed)
+{
+	// Bucket comparison rather than a raw millisecond delta: this catches up
+	// after a late tick instead of accumulating drift the way subtracting a
+	// running total would.
+	int const halfSecond = static_cast<int>(secondsElapsed * 2.0f);
+	if (halfSecond == m_lastMediaHalfSecond)
+	{
+		return;
+	}
+
+	SendPacket(filename, SYNC_PKT_SYNC, SYNC_FILE_MEDIA, 0, secondsElapsed);
+	m_lastMediaHalfSecond = halfSecond;
+}
+
+void SyncManager::SendPacket(std::string const& filename, uint8_t syncAction, uint8_t fileType,
+	uint32_t frame, float secondsElapsed)
 {
 	// FPP matches on the bare file name, not the master's path to it.
-	std::string const name = std::filesystem::path(item).filename().string();
+	std::string const name = std::filesystem::path(filename).filename().string();
 
 	size_t const bufsize = sizeof(ControlPkt) + sizeof(SyncPkt) + name.size();
 	std::vector<uint8_t> buffer(bufsize, 0);
 
-	ControlPkt* cp = reinterpret_cast<ControlPkt*>(&buffer[0]);
+	ControlPkt* cp = reinterpret_cast<ControlPkt*>(buffer.data());
 	memcpy(cp->fppd, "FPPD", 4);
 	cp->pktType = CTRL_PKT_SYNC;
 	cp->extraDataLen = static_cast<uint16_t>(bufsize - sizeof(ControlPkt));
 
-	SyncPkt* sp = reinterpret_cast<SyncPkt*>(&buffer[0] + sizeof(ControlPkt));
+	SyncPkt* sp = reinterpret_cast<SyncPkt*>(buffer.data() + sizeof(ControlPkt));
+	sp->pktType = syncAction;
+	sp->fileType = fileType;
 
-	if (stepMS == 0)
+	// Open/Start/Stop always report frame 0 / 0 seconds in real FPP; only a
+	// genuine Sync packet carries live position data.
+	if (syncAction == SYNC_PKT_SYNC)
 	{
-		sp->pktType = SYNC_PKT_START;
-	}
-	else if (stepMS == 0xFFFFFFFF)
-	{
-		sp->pktType = SYNC_PKT_STOP;
-	}
-	else
-	{
-		sp->pktType = SYNC_PKT_SYNC;
-	}
-
-	if (IsSequenceFile(name))
-	{
-		sp->fileType = SYNC_FILE_SEQ;
-		sp->frameNumber = frames;
-	}
-	else
-	{
-		sp->fileType = SYNC_FILE_MEDIA;
-		sp->frameNumber = 0;
-	}
-
-	if (sp->pktType == SYNC_PKT_SYNC)
-	{
-		sp->secondsElapsed = stepMS / 1000.0f;
+		sp->frameNumber = frame;
+		sp->secondsElapsed = secondsElapsed;
 	}
 	else
 	{
 		sp->frameNumber = 0;
-		sp->secondsElapsed = 0;
+		sp->secondsElapsed = 0.0f;
 	}
 
 	// buffer was zero filled, so the name is already NUL terminated.

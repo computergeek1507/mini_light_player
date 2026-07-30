@@ -7,9 +7,17 @@
 #define MULTISYNC_MULTICAST_ADDRESS "239.70.80.80"
 #define FPP_CTRL_PORT 32320
 
+// Verified against FalconChristmas/fpp: src/MultiSync.h (struct layout and
+// these constants), docs/ControlProtocol.txt (wire byte offsets) and
+// src/Sequence.cpp (call pattern - see SyncManager.cpp). Only CTRL_PKT_SYNC
+// is implemented here; CMD/EVENT/BLANK/PING/PLUGIN/FPPCOMMAND are listed for
+// reference but this player only acts as a sync sender, not a full peer.
+#define CTRL_PKT_CMD 0
 #define CTRL_PKT_SYNC 1
+#define CTRL_PKT_EVENT 2
 #define CTRL_PKT_BLANK 3
 #define CTRL_PKT_PING 4
+#define CTRL_PKT_PLUGIN 5
 #define CTRL_PKT_FPPCOMMAND 6
 
 #pragma pack(push, 1)
