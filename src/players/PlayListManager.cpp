@@ -41,13 +41,19 @@ PlayListManager::~PlayListManager() = default;
 
 bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 {
+	m_configFolder = configFolder;
+
 	for (char const* name : kConfigFileNames)
 	{
 		std::string const filepath = configFolder + "/" + name;
 		if (std::filesystem::exists(filepath))
 		{
 			m_configFileName = name;
+			m_configPath = filepath;
 			LoadJsonFile(filepath);
+
+			std::error_code ec;
+			m_configLastWrite = std::filesystem::last_write_time(filepath, ec);
 			return true;
 		}
 	}
@@ -273,7 +279,63 @@ void PlayListManager::SaveJsonFile(const std::string& jsonFile)
 	}
 
 	output << doc.dump(4) << std::endl;
+	output.close();
 	m_logger->info("Saved: {}", jsonFile);
+
+	// Record our own write, so ReloadIfChanged doesn't immediately reload the
+	// file we just wrote from our own in-memory state.
+	std::error_code ec;
+	m_configLastWrite = std::filesystem::last_write_time(jsonFile, ec);
+}
+
+bool PlayListManager::ReloadIfChanged()
+{
+	// Nothing loaded yet - keep checking the folder in case a config file
+	// gets added while the player is running unattended.
+	if (m_configPath.empty())
+	{
+		if (m_configFolder.empty())
+		{
+			return false;
+		}
+
+		for (char const* name : kConfigFileNames)
+		{
+			std::string const filepath = m_configFolder + "/" + name;
+			if (std::filesystem::exists(filepath))
+			{
+				m_logger->info("Config file appeared, loading: {}", filepath);
+				m_configFileName = name;
+				m_configPath = filepath;
+				LoadJsonFile(filepath);
+
+				std::error_code ec;
+				m_configLastWrite = std::filesystem::last_write_time(filepath, ec);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	std::error_code ec;
+	auto const written = std::filesystem::last_write_time(m_configPath, ec);
+	if (ec)
+	{
+		// Probably a transient stat failure (e.g. an editor mid-write, or the
+		// file briefly removed while replacing it). Keep the playlists we
+		// already have rather than clearing them on a single failed check.
+		return false;
+	}
+
+	if (written == m_configLastWrite)
+	{
+		return false;
+	}
+
+	m_logger->info("Config file changed on disk, reloading: {}", m_configPath);
+	LoadJsonFile(m_configPath);
+	m_configLastWrite = written;
+	return true;
 }
 
 //void PlayListManager::ReadPlaylists(QJsonObject const& json)

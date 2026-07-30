@@ -131,12 +131,17 @@ void MiniPlayer::Run()
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 	}
-	else if (m_playlists->HasSchedules())
+	else
 	{
-		m_logger->info("Waiting for a scheduled playlist, Ctrl+C to stop");
+		m_logger->info("Watching for playlists/schedules in {}, Ctrl+C to stop", m_showfolder);
 
 		while (!g_stopRequested)
 		{
+			// Checked every tick rather than only at startup, so editing the
+			// config file - or adding one that didn't exist yet - takes effect
+			// without restarting the player.
+			m_playlists->ReloadIfChanged();
+
 			// The schedule only advances between sequences; a running sequence
 			// is always allowed to finish.
 			if (!m_player->IsPlaying())
@@ -146,10 +151,6 @@ void MiniPlayer::Run()
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
-	}
-	else
-	{
-		m_logger->warn("Nothing to play: no sequence given and no schedules configured");
 	}
 
 	if (g_stopRequested)

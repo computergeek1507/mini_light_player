@@ -8,6 +8,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <memory>
@@ -56,6 +57,13 @@ public:
     // while a sequence is playing.
     void CheckSchedule();
 
+    // Re-reads the config file if it has changed on disk since it was last
+    // loaded or saved, so editing playlists/schedules doesn't need a restart.
+    // Also picks up a config file that didn't exist yet at startup. Cheap
+    // enough to call on every scheduler tick: a single stat() call, matching
+    // the polling this class already does for CheckSchedule.
+    bool ReloadIfChanged();
+
     // Replaces the Qt PlaySequenceSend signal. Called with the sequence and
     // media paths recorded in the playlist.
     using PlayHandler = std::function<void(std::string const& sequence, std::string const& media)>;
@@ -81,6 +89,13 @@ private:
     // Set by LoadPlayLists to whichever candidate file it found, so Save
     // writes back to that same file rather than always the newer name.
     std::string m_configFileName{ "mini_light_player.json" };
+
+    // Remembered from LoadPlayLists so ReloadIfChanged can retry candidate
+    // names in the same folder, and can tell whether anything has been
+    // loaded yet at all.
+    std::string m_configFolder;
+    std::string m_configPath;
+    std::filesystem::file_time_type m_configLastWrite{};
 
     PlaybackStatus m_status{PlaybackStatus::Stopped};
 
