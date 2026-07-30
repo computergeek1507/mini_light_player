@@ -14,7 +14,8 @@ namespace
 		printf("  show_folder   xLights show directory holding xlights_networks.xml\n");
 		printf("  sequence.fseq optional sequence to play immediately; may be a path\n");
 		printf("                or a name relative to the show folder. Without it the\n");
-		printf("                player follows the schedules in scottplayer.json\n");
+		printf("                player follows the schedules in mini_light_player.json\n");
+		printf("                (or scottplayer.json, for an existing show)\n");
 		printf("  media_file    optional audio file overriding the one named in the fseq\n");
 		printf("  --multisync   act as an FPP multisync master\n");
 	}

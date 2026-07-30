@@ -8,7 +8,7 @@ A small, headless player for [xLights](https://xlights.org/) `.fseq` sequence fi
 
 - Reads xLights `xlights_networks.xml` and drives **E1.31 (sACN)**, **Art-Net** and **DDP** outputs, splitting a single network row across multiple universes when it needs more than 512 channels.
 - Plays **musical sequences** (`.fseq` + audio) with the light data locked to the audio playback position, and **animation sequences** (`.fseq` alone) on a steady wall-clock timer.
-- Reads and writes `scottplayer.json` playlists and day/time schedules, so the player can run unattended and pick up a show automatically at the scheduled time.
+- Reads and writes `mini_light_player.json` playlists and day/time schedules, so the player can run unattended and pick up a show automatically at the scheduled time. `scottplayer.json`, the name the original Qt player used, is also recognized for shows that already have one.
 - Can act as an **FPP multisync** master, broadcasting start/sync/stop packets to remote FPP players on the network.
 - Sends a blackout frame and handles Ctrl+C cleanly, so stopping the player doesn't leave props stuck lit on the last frame shown.
 
@@ -18,8 +18,8 @@ A small, headless player for [xLights](https://xlights.org/) `.fseq` sequence fi
 mini_light_player <show_folder> [sequence.fseq] [media_file] [--multisync]
 ```
 
-- `show_folder` — an xLights show directory containing `xlights_networks.xml` (and optionally `scottplayer.json`).
-- `sequence.fseq` — play this sequence once and exit. May be an absolute path or just a file name, in which case the show folder is searched for it. Omit this to instead follow the schedules in `scottplayer.json` until interrupted.
+- `show_folder` — an xLights show directory containing `xlights_networks.xml` (and optionally a `mini_light_player.json` or `scottplayer.json`).
+- `sequence.fseq` — play this sequence once and exit. May be an absolute path or just a file name, in which case the show folder is searched for it. Omit this to instead follow the schedules in `mini_light_player.json`/`scottplayer.json` until interrupted.
 - `media_file` — override the audio file named inside the `.fseq`.
 - `--multisync` — act as an FPP multisync master, sending start/sync/stop packets to `239.70.80.80:32320` for remote FPP players to follow. Off by default.
 
@@ -68,12 +68,14 @@ The player expects the same folder xLights itself uses:
 
 ```
 show_folder/
-├── xlights_networks.xml   # controller/output configuration (required)
-├── scottplayer.json       # playlists and schedules (optional)
-└── Sequences.../*.fseq    # sequence files, referenced by name or path
+├── xlights_networks.xml     # controller/output configuration (required)
+├── mini_light_player.json   # playlists and schedules (optional)
+└── Sequences.../*.fseq      # sequence files, referenced by name or path
 ```
 
-`scottplayer.json` holds playlists of `{seq, media}` items and schedules with a day-of-week list, a date range and a time-of-day window:
+If both `mini_light_player.json` and `scottplayer.json` are present, `mini_light_player.json` wins. Whichever one was loaded is the one saved back to, so an existing `scottplayer.json` show isn't forced to rename anything.
+
+`mini_light_player.json` holds playlists of `{seq, media}` items and schedules with a day-of-week list, a date range and a time-of-day window. A working example is at [`examples/mini_light_player.json`](examples/mini_light_player.json):
 
 ```json
 {

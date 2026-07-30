@@ -15,6 +15,10 @@ namespace
 	// Short day names as written by the original Qt player, indexed by tm_wday.
 	constexpr std::array<char const*, 7> kDayNames{ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
+	// Preferred name first; scottplayer.json is what the original Qt player
+	// wrote, kept so existing shows load without renaming anything.
+	constexpr std::array<char const*, 2> kConfigFileNames{ "mini_light_player.json", "scottplayer.json" };
+
 	std::tm LocalTimeNow()
 	{
 		std::time_t const now = std::time(nullptr);
@@ -37,21 +41,28 @@ PlayListManager::~PlayListManager() = default;
 
 bool PlayListManager::LoadPlayLists(std::string const& configFolder)
 {
-	std::string const filepath = configFolder + "/" + "scottplayer.json";
-	if(!std::filesystem::exists(filepath))
+	for (char const* name : kConfigFileNames)
 	{
-		m_logger->warn("config file not found: {}", filepath);
-		return false;
+		std::string const filepath = configFolder + "/" + name;
+		if (std::filesystem::exists(filepath))
+		{
+			m_configFileName = name;
+			LoadJsonFile(filepath);
+			return true;
+		}
 	}
-	LoadJsonFile(filepath);
-	return true;
+
+	m_logger->warn("No {} or {} found in {}",
+		kConfigFileNames[0], kConfigFileNames[1], configFolder);
+	return false;
 }
 
 void PlayListManager::SavePlayLists(std::string const& configFolder)
 {
-	std::string const filepath = configFolder  + "/" + "scottplayer.json";
+	// Writes back to whichever file was loaded, or the preferred name for a
+	// show that had neither yet.
+	std::string const filepath = configFolder + "/" + m_configFileName;
 	SaveJsonFile(filepath);
-	//MessageSend("Saved: scottplayer.json" );
 }
 
 void PlayListManager::PlaySequence(int playlist_index, int sequence_index)

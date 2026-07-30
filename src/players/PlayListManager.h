@@ -78,6 +78,10 @@ private:
     std::string m_currentPlaylist;
     int m_nextSequenceIdx{0};
 
+    // Set by LoadPlayLists to whichever candidate file it found, so Save
+    // writes back to that same file rather than always the newer name.
+    std::string m_configFileName{ "mini_light_player.json" };
+
     PlaybackStatus m_status{PlaybackStatus::Stopped};
 
     std::shared_ptr<spdlog::logger> m_logger{ nullptr };

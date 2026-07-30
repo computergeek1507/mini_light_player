@@ -1,0 +1,46 @@
+{
+    "playlists": [
+        {
+            "name": "Main",
+            "items": [
+                {
+                    "seq": "Sequences/MyShow.fseq",
+                    "media": "Audio/MyShow.mp3"
+                },
+                {
+                    "seq": "Sequences/Animation.fseq",
+                    "media": ""
+                }
+            ]
+        },
+        {
+            "name": "Warmup",
+            "items": [
+                {
+                    "seq": "Sequences/Animation.fseq",
+                    "media": ""
+                }
+            ]
+        }
+    ],
+    "schedules": [
+        {
+            "playList": "Warmup",
+            "enabled": true,
+            "startDate": "2020-01-01",
+            "endDate": "2099-12-31",
+            "startTime": "17:00:00.000",
+            "endTime": "17:30:00.000",
+            "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        },
+        {
+            "playList": "Main",
+            "enabled": true,
+            "startDate": "2020-01-01",
+            "endDate": "2099-12-31",
+            "startTime": "17:30:00.000",
+            "endTime": "22:00:00.000",
+            "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        }
+    ]
+}
