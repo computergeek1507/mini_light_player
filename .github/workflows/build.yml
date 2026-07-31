@@ -28,8 +28,12 @@ jobs:
           key: cpm-windows-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: cpm-windows-
 
+      # Tagged (release) builds compile in the optional FTXUI dashboard;
+      # MINIPLAYER_ENABLE_TUI is a compile-time macro, so a build that
+      # succeeds with this flag is guaranteed to have --tui actually linked
+      # in, not just accepted at runtime.
       - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ${{ startsWith(github.ref, 'refs/tags/v') && '-DMINIPLAYER_ENABLE_TUI=ON' || '' }}
 
       # Compiler output only lives in the run log, which needs repo admin to
       # download. Echoing the first errors as ::error:: makes them visible as
@@ -79,8 +83,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends file desktop-file-utils
 
+      # Tagged (release) builds compile in the optional FTXUI dashboard - see
+      # the matching comment in the windows job's Configure step.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ startsWith(github.ref, 'refs/tags/v') && '-DMINIPLAYER_ENABLE_TUI=ON' || '' }}
 
       # As above: surface compiler errors as annotations, since the raw log is
       # only downloadable by repo admins.
