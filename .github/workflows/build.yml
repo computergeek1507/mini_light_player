@@ -15,8 +15,13 @@ env:
 
 jobs:
   windows:
-    name: windows x64 (exe)
+    name: windows x64${{ matrix.tui == 'ON' && ' (tui)' || '' }}
     runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tui: ["OFF", "ON"]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,15 +30,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CPM_SOURCE_CACHE }}
-          key: cpm-windows-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: cpm-windows-
+          key: cpm-windows-${{ matrix.tui }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: cpm-windows-${{ matrix.tui }}-
 
-      # Tagged (release) builds compile in the optional FTXUI dashboard;
-      # MINIPLAYER_ENABLE_TUI is a compile-time macro, so a build that
-      # succeeds with this flag is guaranteed to have --tui actually linked
-      # in, not just accepted at runtime.
       - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ${{ startsWith(github.ref, 'refs/tags/v') && '-DMINIPLAYER_ENABLE_TUI=ON' || '' }}
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DMINIPLAYER_ENABLE_TUI=${{ matrix.tui }}
 
       # Compiler output only lives in the run log, which needs repo admin to
       # download. Echoing the first errors as ::error:: makes them visible as
@@ -50,7 +51,8 @@ jobs:
           fi
 
       # --help exits 0 before any show folder, socket or audio device is touched,
-      # so it proves the binary links and starts without needing hardware.
+      # so it proves the binary links and starts without needing hardware. It
+      # doesn't need a real terminal, so this is safe for the tui variant too.
       - name: Smoke test
         run: |
           ./build/Release/mini_light_player.exe --help
@@ -58,13 +60,18 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mini_light_player-windows-x64
+          name: mini_light_player-windows-x64${{ matrix.tui == 'ON' && '-tui' || '' }}
           path: build/Release/mini_light_player.exe
           if-no-files-found: error
 
   linux:
-    name: linux x86_64 (AppImage)
+    name: linux x86_64${{ matrix.tui == 'ON' && ' (tui)' || '' }}
     runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tui: ["OFF", "ON"]
 
     steps:
       - uses: actions/checkout@v4
@@ -73,8 +80,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CPM_SOURCE_CACHE }}
-          key: cpm-linux-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: cpm-linux-
+          key: cpm-linux-${{ matrix.tui }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: cpm-linux-${{ matrix.tui }}-
 
       # miniaudio dlopen()s ALSA/PulseAudio at runtime, so nothing audio related
       # is needed to build. Only the FUSE runtime for AppImage tooling.
@@ -83,10 +90,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends file desktop-file-utils
 
-      # Tagged (release) builds compile in the optional FTXUI dashboard - see
-      # the matching comment in the windows job's Configure step.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ startsWith(github.ref, 'refs/tags/v') && '-DMINIPLAYER_ENABLE_TUI=ON' || '' }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMINIPLAYER_ENABLE_TUI=${{ matrix.tui }}
 
       # As above: surface compiler errors as annotations, since the raw log is
       # only downloadable by repo admins.
@@ -104,7 +109,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: linux-build-log
+          name: linux-build-log${{ matrix.tui == 'ON' && '-tui' || '' }}
           path: build.log
           if-no-files-found: ignore
 
@@ -144,7 +149,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mini_light_player-linux-x86_64
+          name: mini_light_player-linux-x86_64${{ matrix.tui == 'ON' && '-tui' || '' }}
           path: mini_light_player-x86_64.AppImage
           if-no-files-found: error
 
@@ -169,8 +174,12 @@ jobs:
           mkdir -p dist
           cp artifacts/mini_light_player-windows-x64/mini_light_player.exe \
              dist/mini_light_player-windows-x64.exe
+          cp artifacts/mini_light_player-windows-x64-tui/mini_light_player.exe \
+             dist/mini_light_player-windows-x64-tui.exe
           cp artifacts/mini_light_player-linux-x86_64/mini_light_player-x86_64.AppImage \
              dist/mini_light_player-linux-x86_64.AppImage
+          cp artifacts/mini_light_player-linux-x86_64-tui/mini_light_player-x86_64.AppImage \
+             dist/mini_light_player-linux-x86_64-tui.AppImage
 
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
