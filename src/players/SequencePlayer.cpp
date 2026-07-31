@@ -165,7 +165,7 @@ void SequencePlayer::PlaybackLoop()
 			if (elapsedMS / 1000 != lastReportedSecond)
 			{
 				lastReportedSecond = elapsedMS / 1000;
-				m_logger->debug("{} - frame {}/{} at {}s/{}s",
+				m_logger->trace("{} - frame {}/{} at {}s/{}s",
 					m_seqFileName, frame, m_numberofFrame,
 					elapsedMS / 1000, m_seqMSDuration / 1000);
 			}
